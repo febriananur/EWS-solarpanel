@@ -1,0 +1,865 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Solar Panel Fire EWS – Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="/socket.io/socket.io.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Sora:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg:         #0A0E1A;
+      --surface:    #111827;
+      --surface2:   #1C2436;
+      --border:     #1E2D45;
+      --accent:     #3B82F6;
+      --accent2:    #06B6D4;
+      --text:       #E2E8F0;
+      --muted:      #64748B;
+      --warn:       #F59E0B;
+      --danger:     #EF4444;
+      --critical:   #DC2626;
+      --safe:       #10B981;
+      --mono:       'JetBrains Mono', monospace;
+      --sans:       'Sora', sans-serif;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* Animated background grid */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(59,130,246,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(59,130,246,0.03) 1px, transparent 1px);
+      background-size: 48px 48px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .container { position: relative; z-index: 1; max-width: 1400px; margin: 0 auto; padding: 24px; }
+
+    /* ── Header ── */
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 28px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .logo-icon {
+      width: 42px;
+      height: 42px;
+      background: linear-gradient(135deg, #F59E0B, #EF4444);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+    }
+
+    .logo-text h1 {
+      font-size: 18px;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+    }
+
+    .logo-text p {
+      font-size: 12px;
+      color: var(--muted);
+      font-family: var(--mono);
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .connection-badge {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      font-family: var(--mono);
+      padding: 6px 12px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+    }
+
+    .dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--muted);
+    }
+    .dot.connected { background: var(--safe); animation: pulse-dot 2s infinite; }
+    .dot.warning   { background: var(--warn); animation: pulse-dot 1s infinite; }
+    .dot.danger,
+    .dot.critical  { background: var(--danger); animation: pulse-dot 0.5s infinite; }
+
+    @keyframes pulse-dot {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.5; transform: scale(1.3); }
+    }
+
+    /* ── Alert Banner ── */
+    #alert-banner {
+      display: none;
+      padding: 16px 20px;
+      border-radius: 12px;
+      margin-bottom: 24px;
+      border: 1px solid;
+      animation: slide-in 0.4s cubic-bezier(0.16,1,0.3,1);
+    }
+
+    @keyframes slide-in {
+      from { opacity: 0; transform: translateY(-12px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    #alert-banner.warning  { background: rgba(245,158,11,0.1);  border-color: var(--warn);     color: #FCD34D; }
+    #alert-banner.danger   { background: rgba(239,68,68,0.1);   border-color: var(--danger);   color: #FCA5A5; }
+    #alert-banner.critical { background: rgba(220,38,38,0.15);  border-color: var(--critical); color: #FCA5A5;
+                              animation: slide-in 0.4s cubic-bezier(0.16,1,0.3,1), blink-border 0.8s infinite; }
+
+    @keyframes blink-border {
+      0%, 100% { border-color: var(--critical); }
+      50% { border-color: transparent; }
+    }
+
+    .alert-banner-title { font-size: 15px; font-weight: 600; margin-bottom: 4px; }
+    .alert-banner-msg   { font-size: 13px; opacity: 0.9; line-height: 1.5; }
+    .alert-banner-action { font-size: 12px; font-family: var(--mono); margin-top: 8px; opacity: 0.8; }
+
+    /* ── Grid Layout ── */
+    .grid-main {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    .grid-content {
+      display: grid;
+      grid-template-columns: 1fr 340px;
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    .grid-bottom {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    /* ── Cards ── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 20px;
+    }
+
+    .card-label {
+      font-size: 11px;
+      font-family: var(--mono);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--muted);
+      margin-bottom: 10px;
+    }
+
+    /* ── Metric Cards ── */
+    .metric-value {
+      font-size: 36px;
+      font-weight: 700;
+      font-family: var(--mono);
+      line-height: 1;
+      letter-spacing: -0.03em;
+    }
+
+    .metric-unit  { font-size: 16px; font-weight: 400; color: var(--muted); }
+    .metric-sub   { font-size: 12px; color: var(--muted); margin-top: 8px; font-family: var(--mono); }
+
+    .metric-safe     .metric-value { color: var(--safe); }
+    .metric-warning  .metric-value { color: var(--warn); }
+    .metric-danger   .metric-value { color: var(--danger); }
+    .metric-critical .metric-value { color: var(--critical); animation: flicker 0.8s infinite; }
+
+    @keyframes flicker {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.7; }
+    }
+
+    /* ── Danger Level Badge ── */
+    .danger-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      font-family: var(--mono);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .badge-normal   { background: rgba(16,185,129,0.15); color: var(--safe);    border: 1px solid rgba(16,185,129,0.3); }
+    .badge-warning  { background: rgba(245,158,11,0.15); color: var(--warn);    border: 1px solid rgba(245,158,11,0.3); }
+    .badge-danger   { background: rgba(239,68,68,0.15);  color: var(--danger);  border: 1px solid rgba(239,68,68,0.3); }
+    .badge-critical { background: rgba(220,38,38,0.2);   color: #FF6B6B;        border: 1px solid rgba(220,38,38,0.5);
+                      animation: pulse-bg 0.8s infinite; }
+
+    @keyframes pulse-bg {
+      0%, 100% { background: rgba(220,38,38,0.2); }
+      50% { background: rgba(220,38,38,0.35); }
+    }
+
+    /* ── Chart ── */
+    .chart-container {
+      position: relative;
+      height: 260px;
+    }
+
+    /* ── Model Stats ── */
+    .stat-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 13px;
+    }
+
+    .stat-row:last-child { border-bottom: none; }
+    .stat-label { color: var(--muted); font-family: var(--mono); font-size: 11px; }
+    .stat-value { font-family: var(--mono); font-weight: 500; }
+
+    /* ── R² Bar ── */
+    .r2-bar {
+      height: 6px;
+      background: var(--surface2);
+      border-radius: 3px;
+      overflow: hidden;
+      margin-top: 6px;
+    }
+    .r2-fill {
+      height: 100%;
+      border-radius: 3px;
+      background: linear-gradient(90deg, var(--accent2), var(--accent));
+      transition: width 0.6s ease;
+    }
+
+    /* ── Alert History ── */
+    .alert-list {
+      max-height: 280px;
+      overflow-y: auto;
+    }
+
+    .alert-list::-webkit-scrollbar { width: 4px; }
+    .alert-list::-webkit-scrollbar-track { background: var(--surface2); }
+    .alert-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+    .alert-item {
+      display: flex;
+      gap: 12px;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 12px;
+    }
+    .alert-item:last-child { border-bottom: none; }
+
+    .alert-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      margin-top: 3px;
+      flex-shrink: 0;
+    }
+    .alert-dot.warning  { background: var(--warn); }
+    .alert-dot.danger   { background: var(--danger); }
+    .alert-dot.critical { background: var(--critical); }
+
+    .alert-item-title { font-weight: 500; margin-bottom: 2px; color: var(--text); }
+    .alert-item-time  { color: var(--muted); font-family: var(--mono); font-size: 11px; }
+
+    /* ── Prediction Card ── */
+    .prediction-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .prediction-row:last-child { border-bottom: none; }
+
+    .prediction-label { font-size: 12px; color: var(--muted); font-family: var(--mono); }
+    .prediction-val   { font-size: 14px; font-weight: 600; font-family: var(--mono); }
+
+    .trend-up   { color: var(--danger); }
+    .trend-down { color: var(--safe); }
+    .trend-flat { color: var(--muted); }
+
+    /* ── Factors ── */
+    .factor-tag {
+      display: inline-block;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 4px 10px;
+      font-size: 11px;
+      font-family: var(--mono);
+      margin: 3px 3px 0 0;
+      color: var(--muted);
+    }
+
+    /* ── Last Updated ── */
+    #last-update {
+      font-size: 11px;
+      color: var(--muted);
+      font-family: var(--mono);
+    }
+
+    /* ── Notification sound indicator ── */
+    #sound-toggle {
+      cursor: pointer;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--muted);
+      padding: 6px 12px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-family: var(--sans);
+      transition: all 0.2s;
+    }
+    #sound-toggle:hover { border-color: var(--accent); color: var(--text); }
+
+    @media (max-width: 1100px) {
+      .grid-main    { grid-template-columns: repeat(2, 1fr); }
+      .grid-content { grid-template-columns: 1fr; }
+      .grid-bottom  { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 600px) {
+      .grid-main { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <!-- Header -->
+  <header>
+    <div class="logo">
+      <div class="logo-icon">🔥</div>
+      <div class="logo-text">
+        <h1>Solar Panel Fire EWS</h1>
+        <p>Early Warning System · DHT22 + Linear Regression</p>
+      </div>
+    </div>
+    <div class="header-right">
+      <button id="sound-toggle" onclick="toggleSound()">🔔 Notif: ON</button>
+      <div class="connection-badge">
+        <div class="dot" id="conn-dot"></div>
+        <span id="conn-text">Menghubungkan...</span>
+      </div>
+      <span id="last-update">–</span>
+    </div>
+  </header>
+
+  <!-- Alert Banner -->
+  <div id="alert-banner">
+    <div class="alert-banner-title" id="alert-title"></div>
+    <div class="alert-banner-msg"   id="alert-msg"></div>
+    <div class="alert-banner-action" id="alert-action"></div>
+  </div>
+
+  <!-- Metric Cards Row -->
+  <div class="grid-main">
+    <!-- Suhu -->
+    <div class="card" id="card-temp">
+      <div class="card-label">🌡️ Suhu Aktual</div>
+      <div class="metric-value" id="val-temp">–<span class="metric-unit">°C</span></div>
+      <div class="metric-sub" id="sub-temp">Memuat data...</div>
+    </div>
+
+    <!-- Kelembaban -->
+    <div class="card" id="card-hum">
+      <div class="card-label">💧 Kelembaban</div>
+      <div class="metric-value" id="val-hum">–<span class="metric-unit">%</span></div>
+      <div class="metric-sub" id="sub-hum">Dari sensor DHT22</div>
+    </div>
+
+    <!-- Prediksi -->
+    <div class="card" id="card-pred">
+      <div class="card-label" id="pred-label">📈 Prediksi 10 menit</div>
+      <div class="metric-value" id="val-pred">–<span class="metric-unit">°C</span></div>
+      <div class="metric-sub" id="sub-pred">Linear Regression</div>
+    </div>
+
+    <!-- Status Bahaya -->
+    <div class="card">
+      <div class="card-label">🚦 Status Bahaya</div>
+      <div style="margin: 10px 0">
+        <span class="danger-badge badge-normal" id="danger-badge">NORMAL</span>
+      </div>
+      <div class="metric-sub" id="sub-danger">Semua aman</div>
+    </div>
+  </div>
+
+  <!-- Main Content: Chart + Model Panel -->
+  <div class="grid-content">
+
+    <!-- Chart -->
+    <div class="card">
+      <div class="card-label" style="margin-bottom: 16px">
+        📊 Grafik Suhu – Data Aktual & Garis Regresi Linear
+      </div>
+      <div class="chart-container">
+        <canvas id="tempChart"></canvas>
+      </div>
+      <div style="margin-top: 12px; display: flex; gap: 16px; font-size: 11px; font-family: var(--mono); color: var(--muted)">
+        <span><span style="color:#3B82F6">●</span> Data aktual</span>
+        <span><span style="color:#F59E0B">- -</span> Garis regresi</span>
+        <span><span style="color:#EF4444">- -</span> Prediksi</span>
+        <span><span style="color:#EF4444; opacity:0.3">▬</span> Threshold bahaya (70°C)</span>
+      </div>
+    </div>
+
+    <!-- Model Stats Panel -->
+    <div class="card">
+      <div class="card-label" style="margin-bottom: 14px">⚙️ Model Linear Regression</div>
+
+      <div class="stat-row">
+        <div class="stat-label">SLOPE (m)</div>
+        <div class="stat-value" id="stat-slope">– °C/min</div>
+      </div>
+      <div class="stat-row">
+        <div class="stat-label">INTERCEPT (b)</div>
+        <div class="stat-value" id="stat-intercept">–</div>
+      </div>
+      <div class="stat-row">
+        <div class="stat-label">DATA POINTS</div>
+        <div class="stat-value" id="stat-datapoints">–</div>
+      </div>
+
+      <div style="margin: 16px 0 8px">
+        <div class="stat-label" style="margin-bottom: 6px">AKURASI MODEL (R²)</div>
+        <div class="r2-bar">
+          <div class="r2-fill" id="r2-bar" style="width:0%"></div>
+        </div>
+        <div style="text-align: right; margin-top: 4px; font-size: 11px; font-family: var(--mono); color: var(--accent2)" id="r2-text">0%</div>
+      </div>
+
+      <div class="stat-row">
+        <div class="stat-label">INTERPRETASI</div>
+      </div>
+      <div style="font-size: 12px; color: var(--text); font-family: var(--mono); padding: 8px 0; line-height: 1.5" id="stat-interp">–</div>
+
+      <div style="margin-top: 16px">
+        <div class="card-label" style="margin-bottom: 8px">FAKTOR RISIKO</div>
+        <div id="factor-tags"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bottom: Prediction Detail + Alert History -->
+  <div class="grid-bottom">
+
+    <!-- Prediction Detail -->
+    <div class="card">
+      <div class="card-label" style="margin-bottom: 4px">🔮 Detail Prediksi Early Warning</div>
+
+      <div class="prediction-row">
+        <div class="prediction-label">SUHU PREDIKSI</div>
+        <div class="prediction-val" id="pred-temp-detail">– °C</div>
+      </div>
+      <div class="prediction-row">
+        <div class="prediction-label">JARAK WAKTU</div>
+        <div class="prediction-val" id="pred-mins">– menit ke depan</div>
+      </div>
+      <div class="prediction-row">
+        <div class="prediction-label">TREN</div>
+        <div class="prediction-val" id="pred-trend">–</div>
+      </div>
+      <div class="prediction-row">
+        <div class="prediction-label">LAJU KENAIKAN</div>
+        <div class="prediction-val" id="pred-rate">– °C/menit</div>
+      </div>
+      <div class="prediction-row">
+        <div class="prediction-label">KEPERCAYAAN MODEL</div>
+        <div class="prediction-val" id="pred-confidence">–%</div>
+      </div>
+      <div class="prediction-row">
+        <div class="prediction-label">ESTIMASI BAHAYA KRITIS</div>
+        <div class="prediction-val" id="pred-time-danger">–</div>
+      </div>
+    </div>
+
+    <!-- Alert History -->
+    <div class="card">
+      <div class="card-label" style="margin-bottom: 12px">🔔 Riwayat Notifikasi</div>
+      <div class="alert-list" id="alert-list">
+        <div style="color: var(--muted); font-size: 13px; text-align: center; padding: 20px">
+          Belum ada notifikasi
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  // ─── State ────────────────────────────────────────────────────────────────
+  let soundEnabled = true;
+  let chart = null;
+  const socket = io();
+
+  // ─── Chart Setup ──────────────────────────────────────────────────────────
+  function initChart() {
+    const ctx = document.getElementById('tempChart').getContext('2d');
+    chart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        datasets: [
+          {
+            label: 'Suhu Aktual',
+            data: [],
+            borderColor: '#3B82F6',
+            backgroundColor: 'rgba(59,130,246,0.08)',
+            borderWidth: 2,
+            pointRadius: 3,
+            pointBackgroundColor: '#3B82F6',
+            tension: 0.3,
+            fill: true
+          },
+          {
+            label: 'Garis Regresi',
+            data: [],
+            borderColor: '#F59E0B',
+            borderWidth: 1.5,
+            borderDash: [5, 3],
+            pointRadius: 0,
+            tension: 0,
+            fill: false
+          },
+          {
+            label: 'Prediksi',
+            data: [],
+            borderColor: '#EF4444',
+            borderWidth: 1.5,
+            borderDash: [3, 2],
+            pointRadius: 4,
+            pointBackgroundColor: '#EF4444',
+            tension: 0,
+            fill: false
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: '#1C2436',
+            borderColor: '#1E2D45',
+            borderWidth: 1,
+            titleColor: '#94A3B8',
+            bodyColor: '#E2E8F0',
+            callbacks: {
+              title: (items) => {
+                const d = new Date(items[0].parsed.x);
+                return d.toLocaleTimeString('id-ID');
+              },
+              label: (item) => ` ${item.dataset.label}: ${item.parsed.y}°C`
+            }
+          },
+          annotation: {
+            annotations: {
+              dangerLine: {
+                type: 'line',
+                yMin: 70,
+                yMax: 70,
+                borderColor: 'rgba(239,68,68,0.4)',
+                borderWidth: 1,
+                borderDash: [8, 4],
+                label: {
+                  display: true,
+                  content: 'Threshold Bahaya 70°C',
+                  color: 'rgba(239,68,68,0.7)',
+                  font: { size: 10, family: "'JetBrains Mono'" },
+                  position: 'end'
+                }
+              }
+            }
+          }
+        },
+        scales: {
+          x: {
+            type: 'time',
+            time: { unit: 'minute', displayFormats: { minute: 'HH:mm' } },
+            grid: { color: 'rgba(30,45,69,0.6)' },
+            ticks: { color: '#64748B', font: { family: "'JetBrains Mono'", size: 10 } }
+          },
+          y: {
+            grid: { color: 'rgba(30,45,69,0.6)' },
+            ticks: {
+              color: '#64748B',
+              font: { family: "'JetBrains Mono'", size: 10 },
+              callback: v => v + '°C'
+            },
+            suggestedMin: 30,
+            suggestedMax: 80
+          }
+        }
+      }
+    });
+  }
+
+  // ─── Update UI ─────────────────────────────────────────────────────────────
+  function updateDashboard(state) {
+    const { sensor, model, prediction, danger, chart: chartData, latestAlert } = state;
+
+    // Timestamp
+    document.getElementById('last-update').textContent =
+      'Update: ' + new Date(state.timestamp).toLocaleTimeString('id-ID');
+
+    // Temperature
+    const tempEl = document.getElementById('val-temp');
+    tempEl.innerHTML = sensor.temperature + '<span class="metric-unit">°C</span>';
+    setMetricLevel('card-temp', danger.tempLevel);
+    document.getElementById('sub-temp').textContent =
+      sensor.humidity + '% RH · DHT22';
+
+    // Humidity
+    const humEl = document.getElementById('val-hum');
+    humEl.innerHTML = sensor.humidity + '<span class="metric-unit">%</span>';
+    let humClass = 'metric-safe';
+    if (sensor.humidity < 10) humClass = 'metric-critical';
+    else if (sensor.humidity < 20) humClass = 'metric-danger';
+    document.getElementById('card-hum').className = 'card ' + humClass;
+    document.getElementById('sub-hum').textContent =
+      sensor.humidity < 20 ? '⚠️ Kelembaban terlalu rendah' : 'Normal';
+
+    // Prediction card
+    const predEl = document.getElementById('val-pred');
+    predEl.innerHTML = prediction.predictedTemperature + '<span class="metric-unit">°C</span>';
+    document.getElementById('pred-label').textContent =
+      `📈 Prediksi ${prediction.minutesAhead} menit`;
+    document.getElementById('sub-pred').textContent =
+      `Kepercayaan: ${prediction.confidence}% · R²`;
+    setMetricLevel('card-pred', danger.predictionRisk || 'normal');
+
+    // Danger badge
+    updateDangerBadge(danger.level);
+    document.getElementById('sub-danger').textContent =
+      danger.minutesToDanger
+        ? `Kritis dalam ~${danger.minutesToDanger} menit`
+        : danger.level === 'normal' ? 'Semua parameter aman' : 'Pantau kondisi';
+
+    // Model stats
+    document.getElementById('stat-slope').textContent =
+      (model.slope >= 0 ? '+' : '') + model.slope.toFixed(4) + ' °C/min';
+    document.getElementById('stat-intercept').textContent =
+      model.intercept.toFixed(2);
+    document.getElementById('stat-datapoints').textContent =
+      model.dataPoints + ' titik';
+    document.getElementById('r2-bar').style.width = (model.rSquared * 100).toFixed(0) + '%';
+    document.getElementById('r2-text').textContent = (model.rSquared * 100).toFixed(1) + '%';
+    document.getElementById('stat-interp').textContent = model.interpretation;
+
+    // Factor tags
+    const tagContainer = document.getElementById('factor-tags');
+    tagContainer.innerHTML = danger.factors
+      .map(f => `<span class="factor-tag">${f}</span>`)
+      .join('');
+
+    // Prediction detail
+    document.getElementById('pred-temp-detail').textContent =
+      prediction.predictedTemperature + ' °C';
+    document.getElementById('pred-mins').textContent =
+      prediction.minutesAhead + ' menit ke depan';
+
+    const trendEl = document.getElementById('pred-trend');
+    trendEl.textContent = prediction.trend === 'naik' ? '↑ Naik' :
+                          prediction.trend === 'turun' ? '↓ Turun' : '→ Stabil';
+    trendEl.className = 'prediction-val ' +
+      (prediction.trend === 'naik' ? 'trend-up' :
+       prediction.trend === 'turun' ? 'trend-down' : 'trend-flat');
+
+    document.getElementById('pred-rate').textContent =
+      (prediction.ratePerMinute >= 0 ? '+' : '') + prediction.ratePerMinute + ' °C/menit';
+    document.getElementById('pred-confidence').textContent =
+      prediction.confidence + '%';
+    document.getElementById('pred-time-danger').textContent =
+      danger.minutesToDanger != null
+        ? `~${danger.minutesToDanger} menit lagi`
+        : danger.level === 'critical' ? '🚨 SUDAH KRITIS'
+        : 'Tidak terancam';
+
+    // Chart update
+    if (chart && chartData) {
+      // Historical
+      chart.data.datasets[0].data = chartData.historicalData.map(p => ({
+        x: p.timestamp,
+        y: p.temperature
+      }));
+
+      // Regression line (non-prediction points)
+      const regrLine  = chartData.regressionLine.filter(p => !p.isPrediction);
+      const predPoints = chartData.regressionLine.filter(p => p.isPrediction);
+
+      chart.data.datasets[1].data = regrLine.map(p => ({ x: p.timestamp, y: p.temperature }));
+      chart.data.datasets[2].data = predPoints.map(p => ({ x: p.timestamp, y: p.temperature }));
+
+      chart.update('none');
+    }
+
+    // Alert banner
+    if (latestAlert) {
+      showAlertBanner(latestAlert);
+      if (soundEnabled) playAlertSound(latestAlert.level);
+    } else {
+      hideAlertBanner();
+    }
+  }
+
+  function updateAlertHistory(alerts) {
+    const container = document.getElementById('alert-list');
+    if (!alerts.length) {
+      container.innerHTML = '<div style="color:var(--muted);font-size:13px;text-align:center;padding:20px">Belum ada notifikasi</div>';
+      return;
+    }
+
+    container.innerHTML = alerts.slice(0, 20).map(a => `
+      <div class="alert-item">
+        <div class="alert-dot ${a.level}"></div>
+        <div>
+          <div class="alert-item-title">${a.title}</div>
+          <div class="alert-item-time">${new Date(a.timestamp).toLocaleString('id-ID')}</div>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  // ─── UI Helpers ────────────────────────────────────────────────────────────
+  const dangerConfig = {
+    normal:   { text: '✓ NORMAL',   cls: 'badge-normal' },
+    warning:  { text: '⚠ WASPADA',  cls: 'badge-warning' },
+    danger:   { text: '⛔ BAHAYA',  cls: 'badge-danger' },
+    critical: { text: '🚨 KRITIS',  cls: 'badge-critical' }
+  };
+
+  function updateDangerBadge(level) {
+    const badge = document.getElementById('danger-badge');
+    const cfg = dangerConfig[level] || dangerConfig.normal;
+    badge.textContent = cfg.text;
+    badge.className = 'danger-badge ' + cfg.cls;
+  }
+
+  function setMetricLevel(cardId, level) {
+    const el = document.getElementById(cardId);
+    el.className = 'card metric-' + (level || 'normal');
+  }
+
+  function showAlertBanner(alert) {
+    const banner = document.getElementById('alert-banner');
+    banner.style.display = 'block';
+    banner.className = alert.level;
+    document.getElementById('alert-title').textContent  = alert.title;
+    document.getElementById('alert-msg').textContent    = alert.message;
+    document.getElementById('alert-action').textContent = '→ ' + alert.action;
+  }
+
+  function hideAlertBanner() {
+    document.getElementById('alert-banner').style.display = 'none';
+  }
+
+  // ─── Sound Alerts ──────────────────────────────────────────────────────────
+  const AudioContext = window.AudioContext || window.webkitAudioContext;
+  let audioCtx = null;
+
+  function playAlertSound(level) {
+    if (!soundEnabled) return;
+    if (!audioCtx) audioCtx = new AudioContext();
+
+    const freqMap = { warning: 880, danger: 660, critical: 440 };
+    const freq = freqMap[level] || 880;
+    const repeats = level === 'critical' ? 3 : level === 'danger' ? 2 : 1;
+
+    let delay = 0;
+    for (let i = 0; i < repeats; i++) {
+      setTimeout(() => {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.frequency.value = freq;
+        osc.type = 'sine';
+        gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.4);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.4);
+      }, delay);
+      delay += 500;
+    }
+  }
+
+  function toggleSound() {
+    soundEnabled = !soundEnabled;
+    document.getElementById('sound-toggle').textContent =
+      soundEnabled ? '🔔 Notif: ON' : '🔕 Notif: OFF';
+  }
+
+  // ─── Socket Events ─────────────────────────────────────────────────────────
+  socket.on('connect', () => {
+    document.getElementById('conn-dot').className  = 'dot connected';
+    document.getElementById('conn-text').textContent = 'Terhubung';
+  });
+
+  socket.on('disconnect', () => {
+    document.getElementById('conn-dot').className  = 'dot';
+    document.getElementById('conn-text').textContent = 'Terputus';
+  });
+
+  socket.on('sensor-update', (state) => {
+    // Update connection dot color based on danger level
+    const dot = document.getElementById('conn-dot');
+    dot.className = 'dot ' + (state.danger?.level || 'connected');
+    if (state.danger?.level === 'normal') dot.className = 'dot connected';
+
+    updateDashboard(state);
+  });
+
+  socket.on('alert-history', (alerts) => {
+    updateAlertHistory(alerts);
+  });
+
+  // ─── Init ──────────────────────────────────────────────────────────────────
+  initChart();
+</script>
+</body>
+</html>
