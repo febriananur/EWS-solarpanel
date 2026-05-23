@@ -114,14 +114,16 @@ async function processEarlyWarning() {
         intercept:     modelStats.intercept,
         rSquared:      modelStats.rSquared,
         interpretation: modelStats.interpretation,
-        dataPoints:    history.length
+        dataPoints:    history.length,
+        calculationLogs: modelStats.calculationLogs
       },
       prediction: {
         minutesAhead:         prediction.minutesAhead,
         predictedTemperature: prediction.predictedTemperature,
         trend:                prediction.trend,
         ratePerMinute:        prediction.ratePerMinute,
-        confidence:           prediction.confidence
+        confidence:           prediction.confidence,
+        log:                  prediction.log
       },
       danger: {
         level:          dangerInfo.level,

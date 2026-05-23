@@ -21,6 +21,7 @@ class LinearRegression {
     this.rSquared = 0;      // R² = seberapa akurat model (0-1)
     this.dataPoints = [];
     this.isTrained = false;
+    this.calculationLogs = null;
   }
 
   /**
@@ -39,7 +40,8 @@ class LinearRegression {
     const baseTime = dataPoints[0].timestamp;
     const points = dataPoints.map(p => ({
       x: (p.timestamp - baseTime) / 60000, // konversi ms ke menit
-      y: p.temperature
+      y: p.temperature,
+      originalTime: p.timestamp
     }));
 
     const n = points.length;
@@ -67,18 +69,37 @@ class LinearRegression {
     }
 
     // Hitung R² (koefisien determinasi) — seberapa cocok model
-    this.rSquared = this._calculateRSquared(points);
+    const r2Stats = this._calculateRSquared(points);
+    this.rSquared = r2Stats.rSquared;
 
     this.isTrained = true;
     this._lastBaseTime = baseTime;
     this._lastDataTime = dataPoints[dataPoints.length - 1].timestamp;
+
+    this.calculationLogs = {
+      n,
+      baseTime,
+      points: points.map(p => ({ x: p.x, y: p.y, originalTime: p.originalTime })),
+      sumX,
+      sumY,
+      sumXY,
+      sumX2,
+      denominator,
+      slope: this.slope,
+      intercept: this.intercept,
+      rSquared: this.rSquared,
+      yMean: r2Stats.yMean,
+      ssTot: r2Stats.ssTot,
+      ssRes: r2Stats.ssRes
+    };
 
     return {
       slope: this.slope,
       intercept: this.intercept,
       rSquared: this.rSquared,
       dataCount: n,
-      interpretation: this._interpretSlope()
+      interpretation: this._interpretSlope(),
+      calculationLogs: this.calculationLogs
     };
   }
 
@@ -102,7 +123,14 @@ class LinearRegression {
       predictedTemperature: Math.round(predictedTemp * 10) / 10,
       confidence: Math.round(this.rSquared * 100),
       trend: this.slope > 0.1 ? 'naik' : this.slope < -0.1 ? 'turun' : 'stabil',
-      ratePerMinute: Math.round(this.slope * 100) / 100
+      ratePerMinute: Math.round(this.slope * 100) / 100,
+      log: {
+        currentXMinutes,
+        futureX,
+        slope: this.slope,
+        intercept: this.intercept,
+        predictedTemp
+      }
     };
   }
 
@@ -139,8 +167,8 @@ class LinearRegression {
       ssRes += Math.pow(p.y - yPred, 2);
     }
 
-    if (ssTot === 0) return 1; // Semua nilai sama
-    return Math.max(0, 1 - (ssRes / ssTot));
+    if (ssTot === 0) return { rSquared: 1, yMean, ssTot, ssRes }; // Semua nilai sama
+    return { rSquared: Math.max(0, 1 - (ssRes / ssTot)), yMean, ssTot, ssRes };
   }
 
   _interpretSlope() {
