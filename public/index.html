@@ -426,6 +426,91 @@
         font-size: 28px;
       }
     }
+
+    /* ── Mock Simulation Controls ── */
+    .mock-panel {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      background: linear-gradient(135deg, rgba(59, 130, 246, 0.04), rgba(6, 182, 212, 0.04));
+      border: 1px solid var(--border);
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+      margin-bottom: 24px;
+      animation: slide-in 0.4s ease;
+      flex-wrap: wrap;
+    }
+
+    .mock-title {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .mock-btn-group {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .mock-btn {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--muted);
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 500;
+      font-family: var(--sans);
+      cursor: pointer;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .mock-btn:hover {
+      border-color: var(--accent);
+      color: var(--text);
+    }
+
+    .mock-btn.active[data-trend="rising"] {
+      background: rgba(239, 68, 68, 0.15);
+      border-color: var(--danger);
+      color: #FF8B8B;
+      box-shadow: 0 0 10px rgba(239, 68, 68, 0.15);
+    }
+
+    .mock-btn.active[data-trend="stable"] {
+      background: rgba(16, 185, 129, 0.15);
+      border-color: var(--safe);
+      color: #8EFCB4;
+      box-shadow: 0 0 10px rgba(16, 185, 129, 0.15);
+    }
+
+    .mock-btn.active[data-trend="cooling"] {
+      background: rgba(6, 182, 212, 0.15);
+      border-color: var(--accent2);
+      color: #8EF3FC;
+      box-shadow: 0 0 10px rgba(6, 182, 212, 0.15);
+    }
+
+    @media (max-width: 768px) {
+      .mock-panel {
+        flex-direction: column;
+        align-items: stretch;
+        text-align: center;
+        gap: 12px;
+      }
+      .mock-title {
+        flex-direction: column;
+        gap: 4px;
+      }
+      .mock-btn-group {
+        justify-content: center;
+      }
+      .mock-btn {
+        flex-grow: 1;
+        text-align: center;
+      }
+    }
   </style>
 </head>
 <body>
@@ -449,6 +534,22 @@
       <span id="last-update">–</span>
     </div>
   </header>
+
+  <!-- Mock Control Panel (Hanya muncul jika server berjalan dalam mode DEMO) -->
+  <div id="mock-panel" class="card mock-panel" style="display: none;">
+    <div class="mock-title">
+      <span style="font-size: 20px;">🎛️</span>
+      <div style="text-align: left;">
+        <strong style="display: block; font-size: 13px; font-weight: 600; color: var(--text);">KONTROL SIMULASI SUHU</strong>
+        <span style="font-size: 10px; color: var(--muted); font-family: var(--mono);">Uji respons EWS secara dinamis</span>
+      </div>
+    </div>
+    <div class="mock-btn-group">
+      <button class="mock-btn" id="btn-mock-stable" data-trend="stable" onclick="setMockTrend('stable')">→ Stabil (30°C)</button>
+      <button class="mock-btn" id="btn-mock-cooling" data-trend="cooling" onclick="setMockTrend('cooling')">❄️ Dingin (16°C)</button>
+      <button class="mock-btn" id="btn-mock-rising" data-trend="rising" onclick="setMockTrend('rising')">🔥 Naik (Overheat)</button>
+    </div>
+  </div>
 
   <!-- Alert Banner -->
   <div id="alert-banner">
@@ -920,8 +1021,49 @@
     updateAlertHistory(alerts);
   });
 
+  // ─── Mock Simulation Controls ────────────────────────────────────────────
+  async function checkMockStatus() {
+    try {
+      const res = await fetch('/api/status');
+      const data = await res.json();
+      if (data.mode === 'demo') {
+        document.getElementById('mock-panel').style.display = 'flex';
+        updateMockTrendButtons(data.mockTrend);
+      }
+    } catch (err) {
+      console.error('Gagal mengambil status sistem:', err);
+    }
+  }
+
+  async function setMockTrend(trend) {
+    try {
+      const res = await fetch('/api/mock/trend', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ trend })
+      });
+      const data = await res.json();
+      if (data.success) {
+        updateMockTrendButtons(data.activeTrend);
+      }
+    } catch (err) {
+      console.error('Gagal mengubah tren simulasi:', err);
+    }
+  }
+
+  function updateMockTrendButtons(activeTrend) {
+    document.querySelectorAll('.mock-btn').forEach(btn => {
+      if (btn.getAttribute('data-trend') === activeTrend) {
+        btn.classList.add('active');
+      } else {
+        btn.classList.remove('active');
+      }
+    });
+  }
+
   // ─── Init ──────────────────────────────────────────────────────────────────
   initChart();
+  checkMockStatus();
 </script>
 </body>
 </html>

@@ -45,6 +45,7 @@ const USE_MOCK    = process.env.USE_MOCK === 'true'; // Gunakan data simulasi
 let latestState   = null;
 let alertHistory  = [];
 const MAX_ALERTS  = 50;
+let activeMockTrend = process.env.MOCK_TREND || 'rising'; // Tren simulasi aktif ('rising', 'stable', 'cooling')
 
 // ─── Core Processing Function ─────────────────────────────────────────────────
 async function processEarlyWarning() {
@@ -52,8 +53,8 @@ async function processEarlyWarning() {
     let history, current;
 
     if (USE_MOCK) {
-      // Mode demo: simulasikan kenaikan suhu mulai dari 30°C
-      const mock = firebase.generateMockData(30, 'rising');
+      // Mode demo: simulasikan suhu berdasarkan tren aktif
+      const mock = firebase.generateMockData(30, activeMockTrend);
       history = mock.history;
       current = mock.current;
     } else {
@@ -152,6 +153,7 @@ app.get('/api/status', (req, res) => {
   res.json({
     status: 'running',
     mode: USE_MOCK ? 'demo' : 'production',
+    mockTrend: USE_MOCK ? activeMockTrend : null,
     sensorId: SENSOR_ID,
     predictionWindow: `${PRED_MINS} menit`,
     modelTrained: model.isTrained,
@@ -176,6 +178,24 @@ app.get('/api/latest', (req, res) => {
 // Riwayat alert
 app.get('/api/alerts', (req, res) => {
   res.json(alertHistory);
+});
+
+// Endpoint untuk mengubah tren data mock secara dinamis dari dashboard
+app.post('/api/mock/trend', async (req, res) => {
+  if (!USE_MOCK) {
+    return res.status(400).json({ error: 'Fitur ini hanya tersedia dalam mode DEMO (USE_MOCK=true)' });
+  }
+  const { trend } = req.body;
+  if (!['rising', 'stable', 'cooling'].includes(trend)) {
+    return res.status(400).json({ error: 'Tren tidak valid. Harus salah satu dari: rising, stable, cooling' });
+  }
+  activeMockTrend = trend;
+  console.log(`🔄 Mode DEMO: Tren simulasi diubah menjadi [${trend.toUpperCase()}]`);
+  
+  // Langsung jalankan pemrosesan agar data baru langsung terbentuk dan disiarkan
+  await processEarlyWarning();
+  
+  res.json({ success: true, activeTrend: activeMockTrend });
 });
 
 // Manual trigger analisis
