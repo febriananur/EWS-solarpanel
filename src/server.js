@@ -22,7 +22,7 @@ const cron    = require('node-cron');
 const path    = require('path');
 
 const LinearRegression = require('./linearRegression');
-const { classifyDanger, generateAlert } = require('./alertSystem');
+const { classifyDanger, generateAlert, THRESHOLDS } = require('./alertSystem');
 const firebase  = require('./firebaseService');
 const telegram  = require('./telegramService');
 
@@ -52,8 +52,8 @@ async function processEarlyWarning() {
     let history, current;
 
     if (USE_MOCK) {
-      // Mode demo: simulasikan kenaikan suhu
-      const mock = firebase.generateMockData(42, 'rising');
+      // Mode demo: simulasikan kenaikan suhu mulai dari 30°C
+      const mock = firebase.generateMockData(30, 'rising');
       history = mock.history;
       current = mock.current;
     } else {
@@ -73,7 +73,7 @@ async function processEarlyWarning() {
 
     // ── Step 2: Prediksi suhu ke depan ─────────────────────────────────────
     const prediction = model.predict(PRED_MINS);
-    const minutesToDanger = model.minutesToThreshold(70, current.temperature);
+    const minutesToDanger = model.minutesToThreshold(THRESHOLDS.temperature.critical.min, current.temperature);
     const regressionLine  = model.getRegressionLine(15);
 
     // ── Step 3: Klasifikasi bahaya ──────────────────────────────────────────
@@ -212,10 +212,18 @@ io.on('connection', (socket) => {
 });
 
 // ─── Scheduled Jobs ───────────────────────────────────────────────────────────
-// Jalankan analisis setiap 1 menit
-cron.schedule('* * * * *', () => {
-  processEarlyWarning();
-});
+// Jalankan analisis secara berkala: setiap 5 detik untuk mode Mock (agar demo cepat), atau setiap 1 menit untuk mode Produksi
+if (USE_MOCK) {
+  console.log('⏱️  Mode DEMO: Analisis dan update dashboard dijalankan setiap 5 detik');
+  setInterval(() => {
+    processEarlyWarning();
+  }, 5000);
+} else {
+  cron.schedule('* * * * *', () => {
+    processEarlyWarning();
+  });
+}
+
 
 // ─── Start Server ─────────────────────────────────────────────────────────────
 const PORT = process.env.PORT || 3000;

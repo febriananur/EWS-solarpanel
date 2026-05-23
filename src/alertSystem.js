@@ -10,10 +10,10 @@
 
 const THRESHOLDS = {
   temperature: {
-    normal:  { max: 45 },          // < 45°C = normal untuk panel surya
-    warning: { min: 45, max: 60 }, // 45–60°C = waspada
-    danger:  { min: 60, max: 75 }, // 60–75°C = bahaya
-    critical:{ min: 75 }           // > 75°C = kritis / kebakaran
+    normal:  { max: 30 },          // < 30°C = normal / suhu dingin AC
+    warning: { min: 30, max: 40 }, // 30–40°C = mulai panas (waspada)
+    danger:  { min: 40, max: 50 }, // 40–50°C = overheat (bahaya)
+    critical:{ min: 50 }           // >= 50°C = kritis / risiko kebakaran
   },
   humidity: {
     tooLow:  10,  // < 10% = sangat kering, rawan api

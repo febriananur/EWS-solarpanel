@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Solar Panel Fire EWS – Dashboard</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>
   <script src="/socket.io/socket.io.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Sora:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <style>
@@ -355,14 +357,74 @@
     }
     #sound-toggle:hover { border-color: var(--accent); color: var(--text); }
 
-    @media (max-width: 1100px) {
-      .grid-main    { grid-template-columns: repeat(2, 1fr); }
-      .grid-content { grid-template-columns: 1fr; }
-      .grid-bottom  { grid-template-columns: 1fr; }
+    @media (max-width: 1200px) {
+      .grid-main { grid-template-columns: repeat(2, 1fr); }
     }
 
-    @media (max-width: 600px) {
-      .grid-main { grid-template-columns: 1fr; }
+    @media (max-width: 768px) {
+      .container {
+        padding: 16px;
+      }
+      
+      header {
+        flex-direction: column;
+        align-items: center;
+        gap: 16px;
+        text-align: center;
+      }
+
+      .logo {
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      .header-right {
+        justify-content: center;
+        flex-wrap: wrap;
+        width: 100%;
+        gap: 10px;
+      }
+
+      .connection-badge {
+        flex-grow: 1;
+        justify-content: center;
+      }
+      
+      #sound-toggle {
+        flex-grow: 1;
+      }
+
+      #last-update {
+        width: 100%;
+        text-align: center;
+        margin-top: 4px;
+      }
+
+      .grid-content {
+        grid-template-columns: 1fr;
+      }
+
+      .grid-bottom {
+        grid-template-columns: 1fr;
+      }
+      
+      .metric-value {
+        font-size: 30px;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .grid-main {
+        grid-template-columns: 1fr;
+      }
+
+      .container {
+        padding: 12px;
+      }
+
+      .metric-value {
+        font-size: 28px;
+      }
     }
   </style>
 </head>
@@ -443,7 +505,7 @@
         <span><span style="color:#3B82F6">●</span> Data aktual</span>
         <span><span style="color:#F59E0B">- -</span> Garis regresi</span>
         <span><span style="color:#EF4444">- -</span> Prediksi</span>
-        <span><span style="color:#EF4444; opacity:0.3">▬</span> Threshold bahaya (70°C)</span>
+        <span><span style="color:#EF4444; opacity:0.3">▬</span> Threshold bahaya (50°C)</span>
       </div>
     </div>
 
@@ -601,14 +663,14 @@
             annotations: {
               dangerLine: {
                 type: 'line',
-                yMin: 70,
-                yMax: 70,
+                yMin: 50,
+                yMax: 50,
                 borderColor: 'rgba(239,68,68,0.4)',
                 borderWidth: 1,
                 borderDash: [8, 4],
                 label: {
                   display: true,
-                  content: 'Threshold Bahaya 70°C',
+                  content: 'Threshold Bahaya 50°C',
                   color: 'rgba(239,68,68,0.7)',
                   font: { size: 10, family: "'JetBrains Mono'" },
                   position: 'end'

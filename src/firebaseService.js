@@ -113,7 +113,7 @@ async function saveAlert(sensorId = 'panel_01', alertData) {
  * Mock data generator untuk testing (tanpa hardware)
  * Simulasi kenaikan suhu yang memicu early warning
  */
-function generateMockData(baseTemp = 42, trend = 'rising') {
+function generateMockData(baseTemp = 30, trend = 'rising') {
   const now = Date.now();
   const history = [];
 
@@ -122,11 +122,14 @@ function generateMockData(baseTemp = 42, trend = 'rising') {
     let temp = baseTemp;
 
     if (trend === 'rising') {
+      // Mulai dari baseTemp (misal 30°C) dan naik dramatis hingga >50°C (overheat/kebakaran)
       temp = baseTemp + (29 - i) * 0.8 + (Math.random() - 0.5) * 1.5;
     } else if (trend === 'stable') {
-      temp = baseTemp + (Math.random() - 0.5) * 2;
+      // Stabil di sekitar suhu dasar (30°C untuk suhu ruang tanpa AC)
+      temp = baseTemp + (Math.random() - 0.5) * 1.2;
     } else if (trend === 'cooling') {
-      temp = baseTemp + i * 0.3 + (Math.random() - 0.5);
+      // Turun dari suhu ruang (30°C) menuju suhu AC terdingin (16°C)
+      temp = baseTemp - (29 - i) * 0.48 + (Math.random() - 0.5) * 0.8;
     }
 
     history.push({
