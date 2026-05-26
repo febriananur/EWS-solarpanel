@@ -1,10 +1,10 @@
 /**
- * MAIN SERVER - Solar Panel Fire Early Warning System
- * ====================================================
+ * MAIN SERVER - ESP32 Peltier Cooling Early Warning System
+ * =========================================================
  * Stack: Express + Socket.IO + Firebase + Linear Regression
  *
  * Flow:
- * 1. Ambil data historis dari Firebase
+ * 1. Ambil data historis dari Firebase (/devices/{device_id}/history)
  * 2. Train model Linear Regression
  * 3. Prediksi suhu N menit ke depan
  * 4. Klasifikasi level bahaya
@@ -32,13 +32,16 @@ const io     = new Server(server, {
   cors: { origin: '*', methods: ['GET', 'POST'] }
 });
 
+// TODO(security): CORS wildcard '*' digunakan karena ini IoT dashboard lokal.
+// Untuk deployment produksi, ganti dengan origin spesifik.
+
 app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '../public')));
 
 // ─── State Global ────────────────────────────────────────────────────────────
 const model       = new LinearRegression();
-const SENSOR_ID   = process.env.SENSOR_ID || 'panel_01';
+const DEVICE_ID   = process.env.SENSOR_ID || 'esp32_01';
 const PRED_MINS   = parseInt(process.env.PREDICTION_MINUTES) || 10;
 const USE_MOCK    = process.env.USE_MOCK === 'true'; // Gunakan data simulasi
 
@@ -58,9 +61,9 @@ async function processEarlyWarning() {
       history = mock.history;
       current = mock.current;
     } else {
-      // Mode produksi: ambil dari Firebase
-      history = await firebase.getHistoricalData(SENSOR_ID, 30);
-      current = await firebase.getCurrentReading(SENSOR_ID);
+      // Mode produksi: ambil dari Firebase (path: /devices/{device_id}/)
+      history = await firebase.getHistoricalData(DEVICE_ID, 30);
+      current = await firebase.getCurrentReading(DEVICE_ID);
     }
 
     if (!current || history.length < 3) {
@@ -89,7 +92,7 @@ async function processEarlyWarning() {
 
       // Simpan ke Firebase
       if (!USE_MOCK) {
-        await firebase.saveAlert(SENSOR_ID, alert).catch(console.error);
+        await firebase.saveAlert(DEVICE_ID, alert).catch(console.error);
       }
 
       console.log(`🚨 [${alert.level.toUpperCase()}] ${alert.title}`);
@@ -105,9 +108,17 @@ async function processEarlyWarning() {
     latestState = {
       timestamp:       new Date().toISOString(),
       sensor: {
-        temperature:   current.temperature,
-        humidity:      current.humidity,
-        sensorTime:    current.timestamp
+        temperature:      current.temperature,
+        temperature_raw:  current.temperature_raw || null,
+        temperature_offset: current.temperature_offset || null,
+        humidity:         current.humidity,
+        sensorTime:       current.timestamp
+      },
+      device: {
+        deviceId:           current.device_id || DEVICE_ID,
+        peltierStatus:      current.peltier_status || 'N/A',
+        autoMode:           current.auto_mode !== undefined ? current.auto_mode : null,
+        targetTemperature:  current.target_temperature || null
       },
       model: {
         slope:         modelStats.slope,
@@ -156,7 +167,7 @@ app.get('/api/status', (req, res) => {
     status: 'running',
     mode: USE_MOCK ? 'demo' : 'production',
     mockTrend: USE_MOCK ? activeMockTrend : null,
-    sensorId: SENSOR_ID,
+    deviceId: DEVICE_ID,
     predictionWindow: `${PRED_MINS} menit`,
     modelTrained: model.isTrained,
     lastUpdate: latestState?.timestamp || null,
@@ -180,6 +191,48 @@ app.get('/api/latest', (req, res) => {
 // Riwayat alert
 app.get('/api/alerts', (req, res) => {
   res.json(alertHistory);
+});
+
+// ─── Control API (Baca/tulis setpoint ke ESP32 via Firebase) ──────────────────
+
+// Ambil status kontrol saat ini
+app.get('/api/control', async (req, res) => {
+  try {
+    if (USE_MOCK) {
+      return res.json({ target_temperature: 28.0, auto_mode: true, mode: 'mock' });
+    }
+    const control = await firebase.getControlState(DEVICE_ID);
+    res.json(control);
+  } catch (err) {
+    console.error('❌ Error reading control:', err.message);
+    res.status(500).json({ error: 'Gagal membaca status kontrol' });
+  }
+});
+
+// Ubah setpoint kontrol (target suhu / auto mode)
+app.post('/api/control', async (req, res) => {
+  try {
+    if (USE_MOCK) {
+      return res.json({ success: true, mode: 'mock', note: 'Perubahan tidak diterapkan di mode demo' });
+    }
+
+    const { target_temperature, auto_mode } = req.body;
+
+    // Validasi input
+    if (target_temperature !== undefined) {
+      const temp = parseFloat(target_temperature);
+      if (isNaN(temp) || temp < 10 || temp > 50) {
+        return res.status(400).json({ error: 'Target suhu harus antara 10°C dan 50°C' });
+      }
+    }
+
+    const updated = await firebase.setControl(DEVICE_ID, { target_temperature, auto_mode });
+    console.log(`🎛️ Kontrol diperbarui via dashboard:`, updated);
+    res.json({ success: true, updated });
+  } catch (err) {
+    console.error('❌ Error updating control:', err.message);
+    res.status(500).json({ error: 'Gagal memperbarui kontrol' });
+  }
 });
 
 // Endpoint untuk mengubah tren data mock secara dinamis dari dashboard
@@ -255,7 +308,7 @@ async function start() {
     firebase.initFirebase();
 
     // Subscribe real-time untuk trigger langsung saat ada data baru
-    firebase.subscribeToSensor(SENSOR_ID, () => {
+    firebase.subscribeToSensor(DEVICE_ID, () => {
       processEarlyWarning();
     });
   }
@@ -267,10 +320,10 @@ async function start() {
     const tgStatus = telegram.getStatus();
     console.log(`
 ╔══════════════════════════════════════════════╗
-║   🔥 Solar Panel Fire EWS - RUNNING          ║
+║   🔥 ESP32 Peltier Cooling EWS - RUNNING    ║
 ║   Dashboard: http://localhost:${PORT}           ║
 ║   Mode: ${USE_MOCK ? 'DEMO (simulasi data)      ' : 'PRODUCTION (Firebase)   '}  ║
-║   Sensor: ${SENSOR_ID.padEnd(30)}  ║
+║   Device: ${DEVICE_ID.padEnd(30)}  ║
 ║   Prediksi: ${PRED_MINS} menit ke depan              ║
 ║   Telegram: ${tgStatus.enabled ? `✅ aktif (${tgStatus.chatCount} chat)       ` : '❌ nonaktif              '}  ║
 ╚══════════════════════════════════════════════╝

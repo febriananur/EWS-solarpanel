@@ -3,18 +3,27 @@
  * ================
  * Mengelola koneksi dan operasi Firebase Realtime Database.
  *
- * Struktur data di Firebase yang diharapkan:
- * /sensors/
- *   /{sensor_id}/
- *     current/
- *       temperature: 52.3
- *       humidity: 35.2
- *       timestamp: 1710000000000
+ * Struktur data di Firebase (sesuai ESP32 .ino):
+ * /devices/
+ *   /{device_id}/
+ *     latest/
+ *       device_id: "esp32_01"
+ *       temperature_raw: 32.5
+ *       temperature: 30.0          (setelah kalibrasi)
+ *       temperature_offset: -2.5
+ *       humidity: 65.2
+ *       peltier_status: "ON"/"OFF"
+ *       auto_mode: true/false
+ *       target_temperature: 28.0
+ *       timestamp: 123456          (millis() dari ESP32)
  *     history/
  *       /{push_id}/
- *         temperature: 52.3
- *         humidity: 35.2
- *         timestamp: 1710000000000
+ *         (sama seperti latest)
+ *
+ * /control/
+ *   /{device_id}/
+ *     target_temperature: 28.0
+ *     auto_mode: true
  */
 
 const admin = require('firebase-admin');
@@ -44,45 +53,91 @@ function initFirebase() {
 }
 
 /**
- * Ambil data sensor terkini
- * @param {string} sensorId - ID sensor (default: 'panel_01')
+ * Konversi timestamp millis() ESP32 ke Unix timestamp (ms).
+ * ESP32 mengirim millis() yang merupakan uptime, bukan Unix time.
+ * Kita estimasi Unix timestamp berdasarkan waktu server saat data diterima.
+ *
+ * Untuk data historis: kita gunakan jarak relatif antar data point
+ * dan anchor ke waktu server sekarang.
  */
-async function getCurrentReading(sensorId = 'panel_01') {
-  const snapshot = await db.ref(`sensors/${sensorId}/current`).once('value');
-  return snapshot.val();
+function normalizeHistoryTimestamps(dataArray) {
+  if (!dataArray || dataArray.length === 0) return [];
+
+  const now = Date.now();
+
+  // Ambil millis() terbesar (data terakhir) sebagai acuan = "sekarang"
+  const latestMillis = Math.max(...dataArray.map(d => d.timestamp || 0));
+
+  return dataArray.map(d => {
+    const espMillis = d.timestamp || 0;
+    // Hitung selisih dari data terakhir, lalu kurangi dari waktu sekarang
+    const offsetMs = latestMillis - espMillis;
+    return {
+      ...d,
+      timestamp: now - offsetMs
+    };
+  });
+}
+
+/**
+ * Ambil data sensor terkini dari /devices/{deviceId}/latest
+ * @param {string} deviceId - ID device (default: 'esp32_01')
+ */
+async function getCurrentReading(deviceId = 'esp32_01') {
+  const snapshot = await db.ref(`devices/${deviceId}/latest`).once('value');
+  const data = snapshot.val();
+  if (!data) return null;
+
+  // Konversi timestamp millis() ke Unix timestamp
+  return {
+    ...data,
+    timestamp: Date.now()
+  };
 }
 
 /**
  * Ambil data historis untuk training model Linear Regression
- * @param {string} sensorId
+ * dari /devices/{deviceId}/history
+ * @param {string} deviceId
  * @param {number} limitPoints - jumlah data point terakhir yang diambil
  */
-async function getHistoricalData(sensorId = 'panel_01', limitPoints = 30) {
+async function getHistoricalData(deviceId = 'esp32_01', limitPoints = 30) {
   const snapshot = await db
-    .ref(`sensors/${sensorId}/history`)
-    .orderByChild('timestamp')
+    .ref(`devices/${deviceId}/history`)
+    .orderByKey()
     .limitToLast(limitPoints)
     .once('value');
 
   const raw = snapshot.val();
   if (!raw) return [];
 
-  // Konversi object ke array dan urutkan berdasarkan timestamp
-  return Object.values(raw)
-    .sort((a, b) => a.timestamp - b.timestamp);
+  // Konversi object ke array
+  const dataArray = Object.values(raw);
+
+  // Normalisasi timestamp millis() ke Unix timestamp
+  const normalized = normalizeHistoryTimestamps(dataArray);
+
+  // Urutkan berdasarkan timestamp
+  return normalized.sort((a, b) => a.timestamp - b.timestamp);
 }
 
 /**
- * Listen real-time ke perubahan sensor
- * @param {string} sensorId
+ * Listen real-time ke perubahan sensor di /devices/{deviceId}/latest
+ * @param {string} deviceId
  * @param {Function} callback - dipanggil setiap ada data baru
  */
-function subscribeToSensor(sensorId = 'panel_01', callback) {
-  const ref = db.ref(`sensors/${sensorId}/current`);
+function subscribeToSensor(deviceId = 'esp32_01', callback) {
+  const ref = db.ref(`devices/${deviceId}/latest`);
 
   ref.on('value', (snapshot) => {
     const data = snapshot.val();
-    if (data) callback(data);
+    if (data) {
+      // Konversi timestamp millis() ke Unix timestamp
+      callback({
+        ...data,
+        timestamp: Date.now()
+      });
+    }
   });
 
   // Return unsubscribe function
@@ -90,10 +145,40 @@ function subscribeToSensor(sensorId = 'panel_01', callback) {
 }
 
 /**
+ * Ambil status kontrol dari /control/{deviceId}
+ * @param {string} deviceId
+ */
+async function getControlState(deviceId = 'esp32_01') {
+  const snapshot = await db.ref(`control/${deviceId}`).once('value');
+  return snapshot.val() || {
+    target_temperature: 28.0,
+    auto_mode: true
+  };
+}
+
+/**
+ * Tulis setpoint kontrol ke /control/{deviceId}
+ * ESP32 membaca dari path ini untuk mendapatkan target suhu dan mode auto.
+ * @param {string} deviceId
+ * @param {object} controlData - { target_temperature, auto_mode }
+ */
+async function setControl(deviceId = 'esp32_01', controlData) {
+  const updates = {};
+  if (controlData.target_temperature !== undefined) {
+    updates.target_temperature = parseFloat(controlData.target_temperature);
+  }
+  if (controlData.auto_mode !== undefined) {
+    updates.auto_mode = Boolean(controlData.auto_mode);
+  }
+  await db.ref(`control/${deviceId}`).update(updates);
+  return updates;
+}
+
+/**
  * Simpan hasil prediksi ke Firebase (opsional, untuk logging)
  */
-async function savePrediction(sensorId = 'panel_01', predictionData) {
-  await db.ref(`sensors/${sensorId}/predictions`).push({
+async function savePrediction(deviceId = 'esp32_01', predictionData) {
+  await db.ref(`devices/${deviceId}/predictions`).push({
     ...predictionData,
     savedAt: admin.database.ServerValue.TIMESTAMP
   });
@@ -102,8 +187,8 @@ async function savePrediction(sensorId = 'panel_01', predictionData) {
 /**
  * Simpan alert ke Firebase
  */
-async function saveAlert(sensorId = 'panel_01', alertData) {
-  await db.ref(`sensors/${sensorId}/alerts`).push({
+async function saveAlert(deviceId = 'esp32_01', alertData) {
+  await db.ref(`devices/${deviceId}/alerts`).push({
     ...alertData,
     savedAt: admin.database.ServerValue.TIMESTAMP
   });
@@ -134,7 +219,12 @@ function generateMockData(baseTemp = 30, trend = 'rising') {
 
     history.push({
       temperature: Math.round(temp * 10) / 10,
+      temperature_raw: Math.round((temp + 2.5) * 10) / 10,
+      temperature_offset: -2.5,
       humidity:    Math.round((65 - (29 - i) * 0.5 + (Math.random() - 0.5) * 3) * 10) / 10,
+      peltier_status: temp >= baseTemp ? 'ON' : 'OFF',
+      auto_mode: true,
+      target_temperature: baseTemp,
       timestamp:   now - minutesAgo * 60000
     });
   }
@@ -150,6 +240,8 @@ module.exports = {
   getCurrentReading,
   getHistoricalData,
   subscribeToSensor,
+  getControlState,
+  setControl,
   savePrediction,
   saveAlert,
   generateMockData,

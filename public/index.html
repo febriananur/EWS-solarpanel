@@ -3,7 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Solar Panel Fire EWS – Dashboard</title>
+  <title>ESP32 Peltier Cooling EWS – Dashboard</title>
+  <meta name="description" content="Dashboard Early Warning System untuk monitoring suhu dan kontrol pendinginan Peltier berbasis ESP32 dengan prediksi Linear Regression.">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>
@@ -23,6 +24,7 @@
       --danger:     #EF4444;
       --critical:   #DC2626;
       --safe:       #10B981;
+      --peltier:    #8B5CF6;
       --mono:       'JetBrains Mono', monospace;
       --sans:       'Sora', sans-serif;
     }
@@ -71,7 +73,7 @@
     .logo-icon {
       width: 42px;
       height: 42px;
-      background: linear-gradient(135deg, #F59E0B, #EF4444);
+      background: linear-gradient(135deg, #8B5CF6, #06B6D4);
       border-radius: 10px;
       display: flex;
       align-items: center;
@@ -162,6 +164,13 @@
       margin-bottom: 20px;
     }
 
+    .grid-device {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
     .grid-content {
       display: grid;
       grid-template-columns: 1fr 340px;
@@ -237,6 +246,68 @@
       0%, 100% { background: rgba(220,38,38,0.2); }
       50% { background: rgba(220,38,38,0.35); }
     }
+
+    /* ── Peltier Device Cards ── */
+    .peltier-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 14px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      font-family: var(--mono);
+      letter-spacing: 0.05em;
+    }
+    .peltier-on  { background: rgba(139,92,246,0.15); color: #A78BFA; border: 1px solid rgba(139,92,246,0.3); }
+    .peltier-off { background: rgba(100,116,139,0.15); color: var(--muted); border: 1px solid rgba(100,116,139,0.3); }
+
+    .auto-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 14px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      font-family: var(--mono);
+    }
+    .auto-on  { background: rgba(6,182,212,0.15); color: #67E8F9; border: 1px solid rgba(6,182,212,0.3); }
+    .auto-off { background: rgba(245,158,11,0.15); color: #FCD34D; border: 1px solid rgba(245,158,11,0.3); }
+
+    /* ── Control Panel ── */
+    .control-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-top: 12px;
+    }
+    .control-input {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-family: var(--mono);
+      width: 80px;
+      text-align: center;
+    }
+    .control-input:focus { outline: none; border-color: var(--accent); }
+    .control-btn {
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      border: none;
+      color: white;
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 600;
+      font-family: var(--sans);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .control-btn:hover { opacity: 0.9; transform: translateY(-1px); }
+    .control-btn:active { transform: translateY(0); }
 
     /* ── Chart ── */
     .chart-container {
@@ -359,6 +430,7 @@
 
     @media (max-width: 1200px) {
       .grid-main { grid-template-columns: repeat(2, 1fr); }
+      .grid-device { grid-template-columns: repeat(2, 1fr); }
     }
 
     @media (max-width: 768px) {
@@ -415,6 +487,10 @@
 
     @media (max-width: 480px) {
       .grid-main {
+        grid-template-columns: 1fr;
+      }
+
+      .grid-device {
         grid-template-columns: 1fr;
       }
 
@@ -581,6 +657,24 @@
         flex-grow: 1;
         text-align: center;
       }
+      .terminal-body {
+        flex-direction: column;
+        height: auto;
+      }
+      .terminal-tabs {
+        width: 100%;
+        flex-direction: row;
+        overflow-x: auto;
+        border-right: none;
+        border-bottom: 1px solid var(--border);
+      }
+      .term-tab {
+        white-space: nowrap;
+        border-bottom: none;
+      }
+      .terminal-content {
+        min-height: 200px;
+      }
     }
   </style>
 </head>
@@ -590,9 +684,9 @@
   <!-- Header -->
   <header>
     <div class="logo">
-      <div class="logo-icon">🔥</div>
+      <div class="logo-icon">❄️</div>
       <div class="logo-text">
-        <h1>Solar Panel Fire EWS</h1>
+        <h1>ESP32 Peltier Cooling EWS</h1>
         <p>Early Warning System · DHT22 + Linear Regression</p>
       </div>
     </div>
@@ -633,7 +727,7 @@
   <div class="grid-main">
     <!-- Suhu -->
     <div class="card" id="card-temp">
-      <div class="card-label">🌡️ Suhu Aktual</div>
+      <div class="card-label">🌡️ Suhu Terkalibrasi</div>
       <div class="metric-value" id="val-temp">–<span class="metric-unit">°C</span></div>
       <div class="metric-sub" id="sub-temp">Memuat data...</div>
     </div>
@@ -659,6 +753,38 @@
         <span class="danger-badge badge-normal" id="danger-badge">NORMAL</span>
       </div>
       <div class="metric-sub" id="sub-danger">Semua aman</div>
+    </div>
+  </div>
+
+  <!-- Device Status Row (Peltier, Auto Mode, Target Temp) -->
+  <div class="grid-device" id="device-panel">
+    <!-- Status Peltier -->
+    <div class="card">
+      <div class="card-label">⚡ Status Peltier</div>
+      <div style="margin: 10px 0">
+        <span class="peltier-status peltier-off" id="peltier-badge">– N/A</span>
+      </div>
+      <div class="metric-sub" id="sub-peltier">Menunggu data dari ESP32...</div>
+    </div>
+
+    <!-- Auto Mode -->
+    <div class="card">
+      <div class="card-label">🤖 Mode Otomatis</div>
+      <div style="margin: 10px 0">
+        <span class="auto-badge auto-off" id="auto-badge">– N/A</span>
+      </div>
+      <div class="metric-sub" id="sub-auto">Mode kontrol dari ESP32</div>
+    </div>
+
+    <!-- Target Temperature & Control -->
+    <div class="card">
+      <div class="card-label">🎯 Target Suhu (Setpoint)</div>
+      <div class="metric-value" id="val-target" style="color: var(--accent2);">–<span class="metric-unit">°C</span></div>
+      <div class="control-row" id="control-row">
+        <input type="number" class="control-input" id="input-target" min="10" max="50" step="0.5" placeholder="28">
+        <button class="control-btn" id="btn-set-target" onclick="sendTargetTemp()">Set Target</button>
+      </div>
+      <div class="metric-sub" id="sub-target" style="margin-top: 8px;">ESP32 membaca dari Firebase</div>
     </div>
   </div>
 
@@ -846,11 +972,13 @@
             titleColor: '#94A3B8',
             bodyColor: '#E2E8F0',
             callbacks: {
-              title: (items) => {
+              title: function(items) {
                 const d = new Date(items[0].parsed.x);
                 return d.toLocaleTimeString('id-ID');
               },
-              label: (item) => ` ${item.dataset.label}: ${item.parsed.y}°C`
+              label: function(item) {
+                return ' ' + item.dataset.label + ': ' + item.parsed.y + '\u00B0C';
+              }
             }
           },
           annotation: {
@@ -864,7 +992,7 @@
                 borderDash: [8, 4],
                 label: {
                   display: true,
-                  content: 'Threshold Bahaya 50°C',
+                  content: 'Threshold Bahaya 50\u00B0C',
                   color: 'rgba(239,68,68,0.7)',
                   font: { size: 10, family: "'JetBrains Mono'" },
                   position: 'end'
@@ -885,10 +1013,10 @@
             ticks: {
               color: '#64748B',
               font: { family: "'JetBrains Mono'", size: 10 },
-              callback: v => v + '°C'
+              callback: function(v) { return v + '\u00B0C'; }
             },
-            suggestedMin: 30,
-            suggestedMax: 80
+            suggestedMin: 15,
+            suggestedMax: 60
           }
         }
       }
@@ -900,48 +1028,103 @@
     lastTermData = state;
     renderTermData();
 
-    const { sensor, model, prediction, danger, chart: chartData, latestAlert } = state;
+    const { sensor, device, model, prediction, danger, chart: chartData, latestAlert } = state;
 
     // Timestamp
     document.getElementById('last-update').textContent =
       'Update: ' + new Date(state.timestamp).toLocaleTimeString('id-ID');
 
-    // Temperature
+    // Temperature (calibrated)
     const tempEl = document.getElementById('val-temp');
-    tempEl.innerHTML = sensor.temperature + '<span class="metric-unit">°C</span>';
+    tempEl.textContent = '';
+    const tempValNode = document.createTextNode(sensor.temperature);
+    const tempUnitSpan = document.createElement('span');
+    tempUnitSpan.className = 'metric-unit';
+    tempUnitSpan.textContent = '\u00B0C';
+    tempEl.appendChild(tempValNode);
+    tempEl.appendChild(tempUnitSpan);
     setMetricLevel('card-temp', danger.tempLevel);
-    document.getElementById('sub-temp').textContent =
-      sensor.humidity + '% RH · DHT22';
+
+    // Sub-temp: show raw vs calibrated
+    const subTempEl = document.getElementById('sub-temp');
+    if (sensor.temperature_raw != null) {
+      subTempEl.textContent = 'Raw: ' + sensor.temperature_raw + '\u00B0C | Offset: ' + (sensor.temperature_offset || 0) + '\u00B0C';
+    } else {
+      subTempEl.textContent = sensor.humidity + '% RH \u00B7 DHT22';
+    }
 
     // Humidity
     const humEl = document.getElementById('val-hum');
-    humEl.innerHTML = sensor.humidity + '<span class="metric-unit">%</span>';
-    let humClass = 'metric-safe';
+    humEl.textContent = '';
+    const humValNode = document.createTextNode(sensor.humidity);
+    const humUnitSpan = document.createElement('span');
+    humUnitSpan.className = 'metric-unit';
+    humUnitSpan.textContent = '%';
+    humEl.appendChild(humValNode);
+    humEl.appendChild(humUnitSpan);
+    var humClass = 'metric-safe';
     if (sensor.humidity < 10) humClass = 'metric-critical';
     else if (sensor.humidity < 20) humClass = 'metric-danger';
     document.getElementById('card-hum').className = 'card ' + humClass;
     document.getElementById('sub-hum').textContent =
-      sensor.humidity < 20 ? '⚠️ Kelembaban terlalu rendah' : 'Normal';
+      sensor.humidity < 20 ? '\u26A0\uFE0F Kelembaban terlalu rendah' : 'Normal';
 
     // Prediction card
     const predEl = document.getElementById('val-pred');
-    predEl.innerHTML = prediction.predictedTemperature + '<span class="metric-unit">°C</span>';
+    predEl.textContent = '';
+    var predValNode = document.createTextNode(prediction.predictedTemperature);
+    var predUnitSpan = document.createElement('span');
+    predUnitSpan.className = 'metric-unit';
+    predUnitSpan.textContent = '\u00B0C';
+    predEl.appendChild(predValNode);
+    predEl.appendChild(predUnitSpan);
     document.getElementById('pred-label').textContent =
-      `📈 Prediksi ${prediction.minutesAhead} menit`;
+      '\uD83D\uDCC8 Prediksi ' + prediction.minutesAhead + ' menit';
     document.getElementById('sub-pred').textContent =
-      `Kepercayaan: ${prediction.confidence}% · R²`;
+      'Kepercayaan: ' + prediction.confidence + '% \u00B7 R\u00B2';
     setMetricLevel('card-pred', danger.predictionRisk || 'normal');
 
     // Danger badge
     updateDangerBadge(danger.level);
     document.getElementById('sub-danger').textContent =
       danger.minutesToDanger
-        ? `Kritis dalam ~${danger.minutesToDanger} menit`
+        ? 'Kritis dalam ~' + danger.minutesToDanger + ' menit'
         : danger.level === 'normal' ? 'Semua parameter aman' : 'Pantau kondisi';
+
+    // ── Device Panel (Peltier, Auto Mode, Target) ──
+    if (device) {
+      // Peltier status
+      var peltierBadge = document.getElementById('peltier-badge');
+      var isOn = device.peltierStatus === 'ON';
+      peltierBadge.textContent = isOn ? '\u26A1 ON' : '\u23F8 OFF';
+      peltierBadge.className = 'peltier-status ' + (isOn ? 'peltier-on' : 'peltier-off');
+      document.getElementById('sub-peltier').textContent =
+        isOn ? 'Peltier sedang mendinginkan' : 'Peltier dalam keadaan mati';
+
+      // Auto mode
+      var autoBadge = document.getElementById('auto-badge');
+      var autoOn = device.autoMode === true;
+      autoBadge.textContent = autoOn ? '\uD83E\uDD16 OTOMATIS' : '\u270B MANUAL';
+      autoBadge.className = 'auto-badge ' + (autoOn ? 'auto-on' : 'auto-off');
+      document.getElementById('sub-auto').textContent =
+        autoOn ? 'ESP32 mengontrol Peltier secara otomatis' : 'Peltier dikontrol secara manual';
+
+      // Target temperature
+      var targetEl = document.getElementById('val-target');
+      if (device.targetTemperature != null) {
+        targetEl.textContent = '';
+        var tgtNode = document.createTextNode(device.targetTemperature);
+        var tgtUnit = document.createElement('span');
+        tgtUnit.className = 'metric-unit';
+        tgtUnit.textContent = '\u00B0C';
+        targetEl.appendChild(tgtNode);
+        targetEl.appendChild(tgtUnit);
+      }
+    }
 
     // Model stats
     document.getElementById('stat-slope').textContent =
-      (model.slope >= 0 ? '+' : '') + model.slope.toFixed(4) + ' °C/min';
+      (model.slope >= 0 ? '+' : '') + model.slope.toFixed(4) + ' \u00B0C/min';
     document.getElementById('stat-intercept').textContent =
       model.intercept.toFixed(2);
     document.getElementById('stat-datapoints').textContent =
@@ -950,49 +1133,52 @@
     document.getElementById('r2-text').textContent = (model.rSquared * 100).toFixed(1) + '%';
     document.getElementById('stat-interp').textContent = model.interpretation;
 
-    // Factor tags
-    const tagContainer = document.getElementById('factor-tags');
-    tagContainer.innerHTML = danger.factors
-      .map(f => `<span class="factor-tag">${f}</span>`)
-      .join('');
+    // Factor tags (safe DOM construction)
+    var tagContainer = document.getElementById('factor-tags');
+    tagContainer.replaceChildren();
+    danger.factors.forEach(function(f) {
+      var span = document.createElement('span');
+      span.className = 'factor-tag';
+      span.textContent = f;
+      tagContainer.appendChild(span);
+    });
 
     // Prediction detail
     document.getElementById('pred-temp-detail').textContent =
-      prediction.predictedTemperature + ' °C';
+      prediction.predictedTemperature + ' \u00B0C';
     document.getElementById('pred-mins').textContent =
       prediction.minutesAhead + ' menit ke depan';
 
-    const trendEl = document.getElementById('pred-trend');
-    trendEl.textContent = prediction.trend === 'naik' ? '↑ Naik' :
-                          prediction.trend === 'turun' ? '↓ Turun' : '→ Stabil';
+    var trendEl = document.getElementById('pred-trend');
+    trendEl.textContent = prediction.trend === 'naik' ? '\u2191 Naik' :
+                          prediction.trend === 'turun' ? '\u2193 Turun' : '\u2192 Stabil';
     trendEl.className = 'prediction-val ' +
       (prediction.trend === 'naik' ? 'trend-up' :
        prediction.trend === 'turun' ? 'trend-down' : 'trend-flat');
 
     document.getElementById('pred-rate').textContent =
-      (prediction.ratePerMinute >= 0 ? '+' : '') + prediction.ratePerMinute + ' °C/menit';
+      (prediction.ratePerMinute >= 0 ? '+' : '') + prediction.ratePerMinute + ' \u00B0C/menit';
     document.getElementById('pred-confidence').textContent =
       prediction.confidence + '%';
     document.getElementById('pred-time-danger').textContent =
       danger.minutesToDanger != null
-        ? `~${danger.minutesToDanger} menit lagi`
-        : danger.level === 'critical' ? '🚨 SUDAH KRITIS'
+        ? '~' + danger.minutesToDanger + ' menit lagi'
+        : danger.level === 'critical' ? '\uD83D\uDEA8 SUDAH KRITIS'
         : 'Tidak terancam';
 
     // Chart update
     if (chart && chartData) {
       // Historical
-      chart.data.datasets[0].data = chartData.historicalData.map(p => ({
-        x: p.timestamp,
-        y: p.temperature
-      }));
+      chart.data.datasets[0].data = chartData.historicalData.map(function(p) {
+        return { x: p.timestamp, y: p.temperature };
+      });
 
       // Regression line (non-prediction points)
-      const regrLine  = chartData.regressionLine.filter(p => !p.isPrediction);
-      const predPoints = chartData.regressionLine.filter(p => p.isPrediction);
+      var regrLine  = chartData.regressionLine.filter(function(p) { return !p.isPrediction; });
+      var predPoints = chartData.regressionLine.filter(function(p) { return p.isPrediction; });
 
-      chart.data.datasets[1].data = regrLine.map(p => ({ x: p.timestamp, y: p.temperature }));
-      chart.data.datasets[2].data = predPoints.map(p => ({ x: p.timestamp, y: p.temperature }));
+      chart.data.datasets[1].data = regrLine.map(function(p) { return { x: p.timestamp, y: p.temperature }; });
+      chart.data.datasets[2].data = predPoints.map(function(p) { return { x: p.timestamp, y: p.temperature }; });
 
       chart.update('none');
     }
@@ -1007,82 +1193,136 @@
   }
 
   function updateAlertHistory(alerts) {
-    const container = document.getElementById('alert-list');
+    var container = document.getElementById('alert-list');
+    container.replaceChildren();
     if (!alerts.length) {
-      container.innerHTML = '<div style="color:var(--muted);font-size:13px;text-align:center;padding:20px">Belum ada notifikasi</div>';
+      var emptyDiv = document.createElement('div');
+      emptyDiv.style.cssText = 'color:var(--muted);font-size:13px;text-align:center;padding:20px';
+      emptyDiv.textContent = 'Belum ada notifikasi';
+      container.appendChild(emptyDiv);
       return;
     }
 
-    container.innerHTML = alerts.slice(0, 20).map(a => `
-      <div class="alert-item">
-        <div class="alert-dot ${a.level}"></div>
-        <div>
-          <div class="alert-item-title">${a.title}</div>
-          <div class="alert-item-time">${new Date(a.timestamp).toLocaleString('id-ID')}</div>
-        </div>
-      </div>
-    `).join('');
+    alerts.slice(0, 20).forEach(function(a) {
+      var item = document.createElement('div');
+      item.className = 'alert-item';
+
+      var dot = document.createElement('div');
+      dot.className = 'alert-dot ' + a.level;
+
+      var content = document.createElement('div');
+      var title = document.createElement('div');
+      title.className = 'alert-item-title';
+      title.textContent = a.title;
+      var time = document.createElement('div');
+      time.className = 'alert-item-time';
+      time.textContent = new Date(a.timestamp).toLocaleString('id-ID');
+
+      content.appendChild(title);
+      content.appendChild(time);
+      item.appendChild(dot);
+      item.appendChild(content);
+      container.appendChild(item);
+    });
   }
 
   // ─── UI Helpers ────────────────────────────────────────────────────────────
-  const dangerConfig = {
-    normal:   { text: '✓ NORMAL',   cls: 'badge-normal' },
-    warning:  { text: '⚠ WASPADA',  cls: 'badge-warning' },
-    danger:   { text: '⛔ BAHAYA',  cls: 'badge-danger' },
-    critical: { text: '🚨 KRITIS',  cls: 'badge-critical' }
+  var dangerConfig = {
+    normal:   { text: '\u2713 NORMAL',   cls: 'badge-normal' },
+    warning:  { text: '\u26A0 WASPADA',  cls: 'badge-warning' },
+    danger:   { text: '\u26D4 BAHAYA',  cls: 'badge-danger' },
+    critical: { text: '\uD83D\uDEA8 KRITIS',  cls: 'badge-critical' }
   };
 
   function updateDangerBadge(level) {
-    const badge = document.getElementById('danger-badge');
-    const cfg = dangerConfig[level] || dangerConfig.normal;
+    var badge = document.getElementById('danger-badge');
+    var cfg = dangerConfig[level] || dangerConfig.normal;
     badge.textContent = cfg.text;
     badge.className = 'danger-badge ' + cfg.cls;
   }
 
   function setMetricLevel(cardId, level) {
-    const el = document.getElementById(cardId);
+    var el = document.getElementById(cardId);
     el.className = 'card metric-' + (level || 'normal');
   }
 
   function showAlertBanner(alert) {
-    const banner = document.getElementById('alert-banner');
+    var banner = document.getElementById('alert-banner');
     banner.style.display = 'block';
     banner.className = alert.level;
     document.getElementById('alert-title').textContent  = alert.title;
     document.getElementById('alert-msg').textContent    = alert.message;
-    document.getElementById('alert-action').textContent = '→ ' + alert.action;
+    document.getElementById('alert-action').textContent = '\u2192 ' + alert.action;
   }
 
   function hideAlertBanner() {
     document.getElementById('alert-banner').style.display = 'none';
   }
 
+  // ─── Control: Send target temperature to ESP32 via server ────────────────
+  function sendTargetTemp() {
+    var input = document.getElementById('input-target');
+    var val = parseFloat(input.value);
+    if (isNaN(val) || val < 10 || val > 50) {
+      var subTarget = document.getElementById('sub-target');
+      subTarget.textContent = '\u26A0 Target harus 10\u00B0C - 50\u00B0C';
+      subTarget.style.color = 'var(--warn)';
+      return;
+    }
+
+    fetch('/api/control', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ target_temperature: val })
+    })
+    .then(function(res) { return res.json(); })
+    .then(function(data) {
+      var subTarget = document.getElementById('sub-target');
+      if (data.success) {
+        subTarget.textContent = '\u2705 Target diperbarui: ' + val + '\u00B0C';
+        subTarget.style.color = 'var(--safe)';
+      } else {
+        subTarget.textContent = '\u274C Gagal: ' + (data.error || 'Unknown');
+        subTarget.style.color = 'var(--danger)';
+      }
+      setTimeout(function() {
+        subTarget.textContent = 'ESP32 membaca dari Firebase';
+        subTarget.style.color = '';
+      }, 3000);
+    })
+    .catch(function(err) {
+      console.error('Control error:', err.message);
+    });
+  }
+
   // ─── Sound Alerts ──────────────────────────────────────────────────────────
-  const AudioContext = window.AudioContext || window.webkitAudioContext;
-  let audioCtx = null;
+  var AudioCtx = window.AudioContext || window.webkitAudioContext;
+  var audioCtx = null;
 
   function playAlertSound(level) {
     if (!soundEnabled) return;
-    if (!audioCtx) audioCtx = new AudioContext();
+    if (!audioCtx) audioCtx = new AudioCtx();
 
-    const freqMap = { warning: 880, danger: 660, critical: 440 };
-    const freq = freqMap[level] || 880;
-    const repeats = level === 'critical' ? 3 : level === 'danger' ? 2 : 1;
+    var freqMap = { warning: 880, danger: 660, critical: 440 };
+    var freq = freqMap[level] || 880;
+    var repeats = level === 'critical' ? 3 : level === 'danger' ? 2 : 1;
 
-    let delay = 0;
-    for (let i = 0; i < repeats; i++) {
-      setTimeout(() => {
-        const osc = audioCtx.createOscillator();
-        const gain = audioCtx.createGain();
-        osc.connect(gain);
-        gain.connect(audioCtx.destination);
-        osc.frequency.value = freq;
-        osc.type = 'sine';
-        gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.4);
-        osc.start();
-        osc.stop(audioCtx.currentTime + 0.4);
-      }, delay);
+    var delay = 0;
+    for (var i = 0; i < repeats; i++) {
+      (function(d) {
+        setTimeout(function() {
+          var osc = audioCtx.createOscillator();
+          var gain = audioCtx.createGain();
+          osc.connect(gain);
+          gain.connect(audioCtx.destination);
+          osc.frequency.value = freq;
+          osc.type = 'sine';
+          gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.4);
+          osc.start();
+          osc.stop(audioCtx.currentTime + 0.4);
+        }, d);
+      })(delay);
       delay += 500;
     }
   }
@@ -1090,28 +1330,29 @@
   function toggleSound() {
     soundEnabled = !soundEnabled;
     document.getElementById('sound-toggle').textContent =
-      soundEnabled ? '🔔 Notif: ON' : '🔕 Notif: OFF';
+      soundEnabled ? '\uD83D\uDD14 Notif: ON' : '\uD83D\uDD15 Notif: OFF';
   }
 
   // ─── Terminal Logic ──────────────────────────────────────────────────────────
-  let activeTermTab = 1;
-  let lastTermData = null;
+  var activeTermTab = 1;
+  var lastTermData = null;
 
   function switchTermTab(tabId) {
     activeTermTab = tabId;
-    document.querySelectorAll('.term-tab').forEach(el => {
+    document.querySelectorAll('.term-tab').forEach(function(el) {
       el.classList.toggle('active', parseInt(el.getAttribute('data-tab')) === tabId);
     });
     renderTermData();
   }
 
-  function createTermLine(text, type = 'info') {
-    const line = document.createElement('div');
+  function createTermLine(text, type) {
+    type = type || 'info';
+    var line = document.createElement('div');
     line.className = 'term-line';
-    const prompt = document.createElement('span');
+    var prompt = document.createElement('span');
     prompt.className = 'term-prompt';
     prompt.textContent = '~';
-    const content = document.createElement('span');
+    var content = document.createElement('span');
     content.className = 'term-' + type;
     content.textContent = text;
     line.appendChild(prompt);
@@ -1120,23 +1361,23 @@
   }
 
   function createTermTable(headers, rows) {
-    const table = document.createElement('table');
+    var table = document.createElement('table');
     table.className = 'term-table';
-    const thead = document.createElement('thead');
-    const trHead = document.createElement('tr');
-    headers.forEach(h => {
-      const th = document.createElement('th');
+    var thead = document.createElement('thead');
+    var trHead = document.createElement('tr');
+    headers.forEach(function(h) {
+      var th = document.createElement('th');
       th.textContent = h;
       trHead.appendChild(th);
     });
     thead.appendChild(trHead);
     table.appendChild(thead);
     
-    const tbody = document.createElement('tbody');
-    rows.forEach(r => {
-      const tr = document.createElement('tr');
-      r.forEach(cell => {
-        const td = document.createElement('td');
+    var tbody = document.createElement('tbody');
+    rows.forEach(function(r) {
+      var tr = document.createElement('tr');
+      r.forEach(function(cell) {
+        var td = document.createElement('td');
         td.textContent = cell;
         tr.appendChild(td);
       });
@@ -1147,7 +1388,7 @@
   }
 
   function renderTermData() {
-    const container = document.getElementById('term-content');
+    var container = document.getElementById('term-content');
     container.replaceChildren(); // Safe clearing
     
     if (!lastTermData || !lastTermData.model || !lastTermData.model.calculationLogs) {
@@ -1155,139 +1396,143 @@
       return;
     }
     
-    const calc = lastTermData.model.calculationLogs;
-    const pred = lastTermData.prediction.log;
+    var calc = lastTermData.model.calculationLogs;
+    var pred = lastTermData.prediction.log;
     
     if (activeTermTab === 1) {
-      container.appendChild(createTermLine(`Data Input: ${calc.n} titik data.`, 'info'));
-      container.appendChild(createTermLine(`Base Time (t0): ${new Date(calc.baseTime).toISOString()}`, 'val'));
-      container.appendChild(createTermLine(`Normalisasi: x = (timestamp - t0) / 60000 menit`, 'math'));
+      container.appendChild(createTermLine('Data Input: ' + calc.n + ' titik data.', 'info'));
+      container.appendChild(createTermLine('Base Time (t0): ' + new Date(calc.baseTime).toISOString(), 'val'));
+      container.appendChild(createTermLine('Normalisasi: x = (timestamp - t0) / 60000 menit', 'math'));
       
-      const rows = calc.points.slice(-5).map(p => [
-        new Date(p.originalTime).toLocaleTimeString('id-ID'),
-        p.x.toFixed(2),
-        p.y.toFixed(2)
-      ]);
+      var rows = calc.points.slice(-5).map(function(p) {
+        return [
+          new Date(p.originalTime).toLocaleTimeString('id-ID'),
+          p.x.toFixed(2),
+          p.y.toFixed(2)
+        ];
+      });
       if (calc.n > 5) rows.unshift(['...', '...', '...']);
       
-      container.appendChild(createTermTable(['Timestamp (Aktual)', 'x (Menit)', 'y (Suhu °C)'], rows));
+      container.appendChild(createTermTable(['Timestamp (Aktual)', 'x (Menit)', 'y (Suhu \u00B0C)'], rows));
     }
     else if (activeTermTab === 2) {
       container.appendChild(createTermLine('Akumulasi Matriks untuk Persamaan Regresi Linear:', 'info'));
-      container.appendChild(createTermLine(`Σx  = ${calc.sumX.toFixed(4)}`, 'val'));
-      container.appendChild(createTermLine(`Σy  = ${calc.sumY.toFixed(4)}`, 'val'));
-      container.appendChild(createTermLine(`Σxy = ${calc.sumXY.toFixed(4)}`, 'val'));
-      container.appendChild(createTermLine(`Σx² = ${calc.sumX2.toFixed(4)}`, 'val'));
-      container.appendChild(createTermLine(`n   = ${calc.n}`, 'val'));
+      container.appendChild(createTermLine('\u03A3x  = ' + calc.sumX.toFixed(4), 'val'));
+      container.appendChild(createTermLine('\u03A3y  = ' + calc.sumY.toFixed(4), 'val'));
+      container.appendChild(createTermLine('\u03A3xy = ' + calc.sumXY.toFixed(4), 'val'));
+      container.appendChild(createTermLine('\u03A3x\u00B2 = ' + calc.sumX2.toFixed(4), 'val'));
+      container.appendChild(createTermLine('n   = ' + calc.n, 'val'));
       
-      container.appendChild(createTermLine(`Denominator = (n * Σx²) - (Σx)²`, 'math'));
-      container.appendChild(createTermLine(`Denominator = (${calc.n} * ${calc.sumX2.toFixed(4)}) - (${calc.sumX.toFixed(4)})²`, 'math'));
-      container.appendChild(createTermLine(`Denominator = ${calc.denominator.toFixed(4)}`, 'val'));
+      container.appendChild(createTermLine('Denominator = (n * \u03A3x\u00B2) - (\u03A3x)\u00B2', 'math'));
+      container.appendChild(createTermLine('Denominator = (' + calc.n + ' * ' + calc.sumX2.toFixed(4) + ') - (' + calc.sumX.toFixed(4) + ')\u00B2', 'math'));
+      container.appendChild(createTermLine('Denominator = ' + calc.denominator.toFixed(4), 'val'));
     }
     else if (activeTermTab === 3) {
       container.appendChild(createTermLine('1. Menghitung Laju Kenaikan (Slope / m):', 'info'));
-      container.appendChild(createTermLine(`m = ((n * Σxy) - (Σx * Σy)) / Denominator`, 'math'));
-      const numM = (calc.n * calc.sumXY) - (calc.sumX * calc.sumY);
-      container.appendChild(createTermLine(`m = (${numM.toFixed(4)}) / ${calc.denominator.toFixed(4)}`, 'math'));
-      container.appendChild(createTermLine(`m = ${calc.slope.toFixed(6)} °C/menit`, 'val'));
+      container.appendChild(createTermLine('m = ((n * \u03A3xy) - (\u03A3x * \u03A3y)) / Denominator', 'math'));
+      var numM = (calc.n * calc.sumXY) - (calc.sumX * calc.sumY);
+      container.appendChild(createTermLine('m = (' + numM.toFixed(4) + ') / ' + calc.denominator.toFixed(4), 'math'));
+      container.appendChild(createTermLine('m = ' + calc.slope.toFixed(6) + ' \u00B0C/menit', 'val'));
       
       container.appendChild(document.createElement('br'));
       container.appendChild(createTermLine('2. Menghitung Titik Potong (Intercept / b):', 'info'));
-      container.appendChild(createTermLine(`b = (Σy - m * Σx) / n`, 'math'));
-      const numB = calc.sumY - (calc.slope * calc.sumX);
-      container.appendChild(createTermLine(`b = (${numB.toFixed(4)}) / ${calc.n}`, 'math'));
-      container.appendChild(createTermLine(`b = ${calc.intercept.toFixed(6)} °C`, 'val'));
+      container.appendChild(createTermLine('b = (\u03A3y - m * \u03A3x) / n', 'math'));
+      var numB = calc.sumY - (calc.slope * calc.sumX);
+      container.appendChild(createTermLine('b = (' + numB.toFixed(4) + ') / ' + calc.n, 'math'));
+      container.appendChild(createTermLine('b = ' + calc.intercept.toFixed(6) + ' \u00B0C', 'val'));
       
       container.appendChild(document.createElement('br'));
-      container.appendChild(createTermLine(`=> Persamaan Garis: y = ${calc.slope.toFixed(4)}x + ${calc.intercept.toFixed(4)}`, 'val'));
+      container.appendChild(createTermLine('=> Persamaan Garis: y = ' + calc.slope.toFixed(4) + 'x + ' + calc.intercept.toFixed(4), 'val'));
     }
     else if (activeTermTab === 4) {
       container.appendChild(createTermLine('Evaluasi Kecocokan Model (Coefficient of Determination):', 'info'));
-      container.appendChild(createTermLine(`Rata-rata y (yMean) = ${calc.yMean.toFixed(4)}`, 'math'));
-      container.appendChild(createTermLine(`SStot (Total Sum of Squares) = Σ(y - yMean)² = ${calc.ssTot.toFixed(4)}`, 'val'));
-      container.appendChild(createTermLine(`SSres (Residual Sum of Squares) = Σ(y - yPred)² = ${calc.ssRes.toFixed(4)}`, 'val'));
+      container.appendChild(createTermLine('Rata-rata y (yMean) = ' + calc.yMean.toFixed(4), 'math'));
+      container.appendChild(createTermLine('SStot (Total Sum of Squares) = \u03A3(y - yMean)\u00B2 = ' + calc.ssTot.toFixed(4), 'val'));
+      container.appendChild(createTermLine('SSres (Residual Sum of Squares) = \u03A3(y - yPred)\u00B2 = ' + calc.ssRes.toFixed(4), 'val'));
       container.appendChild(document.createElement('br'));
       
-      container.appendChild(createTermLine(`R² = 1 - (SSres / SStot)`, 'math'));
-      container.appendChild(createTermLine(`R² = 1 - (${calc.ssRes.toFixed(4)} / ${calc.ssTot.toFixed(4)})`, 'math'));
-      container.appendChild(createTermLine(`R² = ${calc.rSquared.toFixed(6)} (${(calc.rSquared * 100).toFixed(1)}%)`, 'val'));
+      container.appendChild(createTermLine('R\u00B2 = 1 - (SSres / SStot)', 'math'));
+      container.appendChild(createTermLine('R\u00B2 = 1 - (' + calc.ssRes.toFixed(4) + ' / ' + calc.ssTot.toFixed(4) + ')', 'math'));
+      container.appendChild(createTermLine('R\u00B2 = ' + calc.rSquared.toFixed(6) + ' (' + (calc.rSquared * 100).toFixed(1) + '%)', 'val'));
     }
     else if (activeTermTab === 5 && pred) {
-      container.appendChild(createTermLine(`Prediksi ${lastTermData.prediction.minutesAhead} Menit ke Depan:`, 'info'));
-      container.appendChild(createTermLine(`x_sekarang = ${pred.currentXMinutes.toFixed(2)} menit`, 'math'));
-      container.appendChild(createTermLine(`x_future = x_sekarang + ${lastTermData.prediction.minutesAhead} = ${pred.futureX.toFixed(2)} menit`, 'math'));
-      container.appendChild(createTermLine(`y_pred = m * x_future + b`, 'math'));
-      container.appendChild(createTermLine(`y_pred = (${pred.slope.toFixed(4)}) * (${pred.futureX.toFixed(2)}) + (${pred.intercept.toFixed(4)})`, 'math'));
-      container.appendChild(createTermLine(`y_pred = ${pred.predictedTemp.toFixed(2)} °C`, 'val'));
+      container.appendChild(createTermLine('Prediksi ' + lastTermData.prediction.minutesAhead + ' Menit ke Depan:', 'info'));
+      container.appendChild(createTermLine('x_sekarang = ' + pred.currentXMinutes.toFixed(2) + ' menit', 'math'));
+      container.appendChild(createTermLine('x_future = x_sekarang + ' + lastTermData.prediction.minutesAhead + ' = ' + pred.futureX.toFixed(2) + ' menit', 'math'));
+      container.appendChild(createTermLine('y_pred = m * x_future + b', 'math'));
+      container.appendChild(createTermLine('y_pred = (' + pred.slope.toFixed(4) + ') * (' + pred.futureX.toFixed(2) + ') + (' + pred.intercept.toFixed(4) + ')', 'math'));
+      container.appendChild(createTermLine('y_pred = ' + pred.predictedTemp.toFixed(2) + ' \u00B0C', 'val'));
       
       container.appendChild(document.createElement('br'));
       if (lastTermData.danger && lastTermData.danger.minutesToDanger) {
-        container.appendChild(createTermLine(`Estimasi Waktu Menuju Kritis (50°C):`, 'info'));
-        container.appendChild(createTermLine(`t_kritis = (50 - Suhu_sekarang) / m`, 'math'));
-        container.appendChild(createTermLine(`t_kritis = (50 - ${lastTermData.sensor.temperature}) / ${pred.slope.toFixed(4)}`, 'math'));
-        container.appendChild(createTermLine(`Estimasi = ~${lastTermData.danger.minutesToDanger} menit lagi.`, 'val'));
+        container.appendChild(createTermLine('Estimasi Waktu Menuju Kritis (50\u00B0C):', 'info'));
+        container.appendChild(createTermLine('t_kritis = (50 - Suhu_sekarang) / m', 'math'));
+        container.appendChild(createTermLine('t_kritis = (50 - ' + lastTermData.sensor.temperature + ') / ' + pred.slope.toFixed(4), 'math'));
+        container.appendChild(createTermLine('Estimasi = ~' + lastTermData.danger.minutesToDanger + ' menit lagi.', 'val'));
       } else {
-        container.appendChild(createTermLine(`Aman: Tidak ada proyeksi mencapai threshold kritis.`, 'val'));
+        container.appendChild(createTermLine('Aman: Tidak ada proyeksi mencapai threshold kritis.', 'val'));
       }
     }
   }
 
   // ─── Socket Events ─────────────────────────────────────────────────────────
-  socket.on('connect', () => {
+  socket.on('connect', function() {
     document.getElementById('conn-dot').className  = 'dot connected';
     document.getElementById('conn-text').textContent = 'Terhubung';
   });
 
-  socket.on('disconnect', () => {
+  socket.on('disconnect', function() {
     document.getElementById('conn-dot').className  = 'dot';
     document.getElementById('conn-text').textContent = 'Terputus';
   });
 
-  socket.on('sensor-update', (state) => {
+  socket.on('sensor-update', function(state) {
     // Update connection dot color based on danger level
-    const dot = document.getElementById('conn-dot');
+    var dot = document.getElementById('conn-dot');
     dot.className = 'dot ' + (state.danger?.level || 'connected');
     if (state.danger?.level === 'normal') dot.className = 'dot connected';
 
     updateDashboard(state);
   });
 
-  socket.on('alert-history', (alerts) => {
+  socket.on('alert-history', function(alerts) {
     updateAlertHistory(alerts);
   });
 
   // ─── Mock Simulation Controls ────────────────────────────────────────────
-  async function checkMockStatus() {
-    try {
-      const res = await fetch('/api/status');
-      const data = await res.json();
-      if (data.mode === 'demo') {
-        document.getElementById('mock-panel').style.display = 'flex';
-        updateMockTrendButtons(data.mockTrend);
-      }
-    } catch (err) {
-      console.error('Gagal mengambil status sistem:', err);
-    }
+  function checkMockStatus() {
+    fetch('/api/status')
+      .then(function(res) { return res.json(); })
+      .then(function(data) {
+        if (data.mode === 'demo') {
+          document.getElementById('mock-panel').style.display = 'flex';
+          updateMockTrendButtons(data.mockTrend);
+        }
+      })
+      .catch(function(err) {
+        console.error('Gagal mengambil status sistem:', err.message);
+      });
   }
 
-  async function setMockTrend(trend) {
-    try {
-      const res = await fetch('/api/mock/trend', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ trend })
-      });
-      const data = await res.json();
+  function setMockTrend(trend) {
+    fetch('/api/mock/trend', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ trend: trend })
+    })
+    .then(function(res) { return res.json(); })
+    .then(function(data) {
       if (data.success) {
         updateMockTrendButtons(data.activeTrend);
       }
-    } catch (err) {
-      console.error('Gagal mengubah tren simulasi:', err);
-    }
+    })
+    .catch(function(err) {
+      console.error('Gagal mengubah tren simulasi:', err.message);
+    });
   }
 
   function updateMockTrendButtons(activeTrend) {
-    document.querySelectorAll('.mock-btn').forEach(btn => {
+    document.querySelectorAll('.mock-btn').forEach(function(btn) {
       if (btn.getAttribute('data-trend') === activeTrend) {
         btn.classList.add('active');
       } else {
