@@ -166,14 +166,14 @@
 
     .grid-device {
       display: grid;
-      grid-template-columns: repeat(3, 1fr);
+      grid-template-columns: repeat(2, 1fr);
       gap: 16px;
       margin-bottom: 20px;
     }
 
     .grid-content {
       display: grid;
-      grid-template-columns: 1fr 340px;
+      grid-template-columns: 1fr;
       gap: 16px;
       margin-bottom: 20px;
     }
@@ -503,77 +503,6 @@
       }
     }
 
-    /* ── Terminal Log ── */
-    .terminal-container {
-      background: #05070f;
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      margin-bottom: 24px;
-      overflow: hidden;
-      font-family: var(--mono);
-      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-    }
-    .terminal-header {
-      background: var(--surface2);
-      padding: 10px 16px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      border-bottom: 1px solid var(--border);
-      font-size: 12px;
-      color: var(--muted);
-    }
-    .terminal-dots { display: flex; gap: 6px; }
-    .term-dot { width: 10px; height: 10px; border-radius: 50%; }
-    .term-dot.r { background: #FF5F56; }
-    .term-dot.y { background: #FFBD2E; }
-    .term-dot.g { background: #27C93F; }
-    
-    .terminal-body {
-      display: flex;
-      height: 320px;
-    }
-    
-    .terminal-tabs {
-      width: 220px;
-      background: rgba(10, 14, 26, 0.5);
-      border-right: 1px solid var(--border);
-      display: flex;
-      flex-direction: column;
-    }
-    .term-tab {
-      padding: 12px 16px;
-      cursor: pointer;
-      font-size: 11px;
-      color: var(--muted);
-      border-bottom: 1px solid rgba(30, 45, 69, 0.4);
-      transition: all 0.2s;
-    }
-    .term-tab:hover { background: rgba(59, 130, 246, 0.05); color: var(--text); }
-    .term-tab.active { background: rgba(59, 130, 246, 0.1); color: var(--accent); border-left: 3px solid var(--accent); }
-    
-    .terminal-content {
-      flex: 1;
-      padding: 16px;
-      overflow-y: auto;
-      font-size: 12px;
-      color: #A3B8CC;
-      line-height: 1.6;
-    }
-    .terminal-content::-webkit-scrollbar { width: 6px; }
-    .terminal-content::-webkit-scrollbar-track { background: transparent; }
-    .terminal-content::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
-    
-    .term-line { display: flex; margin-bottom: 8px; }
-    .term-prompt { color: var(--accent2); margin-right: 12px; user-select: none; }
-    .term-info { color: #8BE9FD; }
-    .term-val { color: #F1FA8C; }
-    .term-math { color: #FF79C6; margin-left: 8px; }
-    
-    .term-table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 11px; }
-    .term-table th, .term-table td { border: 1px solid var(--border); padding: 6px 10px; text-align: right; }
-    .term-table th { background: rgba(30, 45, 69, 0.4); color: var(--muted); }
-
     /* ── Mock Simulation Controls ── */
     .mock-panel {
       display: flex;
@@ -656,24 +585,6 @@
       .mock-btn {
         flex-grow: 1;
         text-align: center;
-      }
-      .terminal-body {
-        flex-direction: column;
-        height: auto;
-      }
-      .terminal-tabs {
-        width: 100%;
-        flex-direction: row;
-        overflow-x: auto;
-        border-right: none;
-        border-bottom: 1px solid var(--border);
-      }
-      .term-tab {
-        white-space: nowrap;
-        border-bottom: none;
-      }
-      .terminal-content {
-        min-height: 200px;
       }
     }
   </style>
@@ -767,15 +678,6 @@
       <div class="metric-sub" id="sub-peltier">Menunggu data dari ESP32...</div>
     </div>
 
-    <!-- Auto Mode -->
-    <div class="card">
-      <div class="card-label">🤖 Mode Otomatis</div>
-      <div style="margin: 10px 0">
-        <span class="auto-badge auto-off" id="auto-badge">– N/A</span>
-      </div>
-      <div class="metric-sub" id="sub-auto">Mode kontrol dari ESP32</div>
-    </div>
-
     <!-- Target Temperature & Control -->
     <div class="card">
       <div class="card-label">🎯 Target Suhu (Setpoint)</div>
@@ -788,7 +690,7 @@
     </div>
   </div>
 
-  <!-- Main Content: Chart + Model Panel -->
+  <!-- Main Content: Chart -->
   <div class="grid-content">
 
     <!-- Chart -->
@@ -804,64 +706,6 @@
         <span><span style="color:#F59E0B">- -</span> Garis regresi</span>
         <span><span style="color:#EF4444">- -</span> Prediksi</span>
         <span><span style="color:#EF4444; opacity:0.3">▬</span> Threshold bahaya (50°C)</span>
-      </div>
-    </div>
-
-    <!-- Model Stats Panel -->
-    <div class="card">
-      <div class="card-label" style="margin-bottom: 14px">⚙️ Model Linear Regression</div>
-
-      <div class="stat-row">
-        <div class="stat-label">SLOPE (m)</div>
-        <div class="stat-value" id="stat-slope">– °C/min</div>
-      </div>
-      <div class="stat-row">
-        <div class="stat-label">INTERCEPT (b)</div>
-        <div class="stat-value" id="stat-intercept">–</div>
-      </div>
-      <div class="stat-row">
-        <div class="stat-label">DATA POINTS</div>
-        <div class="stat-value" id="stat-datapoints">–</div>
-      </div>
-
-      <div style="margin: 16px 0 8px">
-        <div class="stat-label" style="margin-bottom: 6px">AKURASI MODEL (R²)</div>
-        <div class="r2-bar">
-          <div class="r2-fill" id="r2-bar" style="width:0%"></div>
-        </div>
-        <div style="text-align: right; margin-top: 4px; font-size: 11px; font-family: var(--mono); color: var(--accent2)" id="r2-text">0%</div>
-      </div>
-
-      <div class="stat-row">
-        <div class="stat-label">INTERPRETASI</div>
-      </div>
-      <div style="font-size: 12px; color: var(--text); font-family: var(--mono); padding: 8px 0; line-height: 1.5" id="stat-interp">–</div>
-
-      <div style="margin-top: 16px">
-        <div class="card-label" style="margin-bottom: 8px">FAKTOR RISIKO</div>
-        <div id="factor-tags"></div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Terminal Engine Log -->
-  <div class="terminal-container">
-    <div class="terminal-header">
-      <div class="terminal-dots">
-        <div class="term-dot r"></div><div class="term-dot y"></div><div class="term-dot g"></div>
-      </div>
-      <div>📟 DETAILED STEP-BY-STEP CALCULATION ENGINE (LOG PROSES BACKEND)</div>
-    </div>
-    <div class="terminal-body">
-      <div class="terminal-tabs">
-        <div class="term-tab active" data-tab="1" onclick="switchTermTab(1)">1. Normalisasi Data</div>
-        <div class="term-tab" data-tab="2" onclick="switchTermTab(2)">2. Matriks Akumulasi</div>
-        <div class="term-tab" data-tab="3" onclick="switchTermTab(3)">3. Solver: Slope & Intercept</div>
-        <div class="term-tab" data-tab="4" onclick="switchTermTab(4)">4. Akurasi (R²)</div>
-        <div class="term-tab" data-tab="5" onclick="switchTermTab(5)">5. Proyeksi Bahaya</div>
-      </div>
-      <div class="terminal-content" id="term-content">
-        <div class="term-line"><span class="term-prompt">~</span><span style="color:var(--muted)">Menunggu data dari backend...</span></div>
       </div>
     </div>
   </div>
@@ -890,7 +734,7 @@
         <div class="prediction-val" id="pred-rate">– °C/menit</div>
       </div>
       <div class="prediction-row">
-        <div class="prediction-label">KEPERCAYAAN MODEL</div>
+        <div class="prediction-label">TINGKAT AKURASI MODEL (R²)</div>
         <div class="prediction-val" id="pred-confidence">–%</div>
       </div>
       <div class="prediction-row">
@@ -1025,9 +869,6 @@
 
   // ─── Update UI ─────────────────────────────────────────────────────────────
   function updateDashboard(state) {
-    lastTermData = state;
-    renderTermData();
-
     const { sensor, device, model, prediction, danger, chart: chartData, latestAlert } = state;
 
     // Timestamp
@@ -1091,7 +932,7 @@
         ? 'Kritis dalam ~' + danger.minutesToDanger + ' menit'
         : danger.level === 'normal' ? 'Semua parameter aman' : 'Pantau kondisi';
 
-    // ── Device Panel (Peltier, Auto Mode, Target) ──
+    // ── Device Panel (Peltier, Target) ──
     if (device) {
       // Peltier status
       var peltierBadge = document.getElementById('peltier-badge');
@@ -1100,14 +941,6 @@
       peltierBadge.className = 'peltier-status ' + (isOn ? 'peltier-on' : 'peltier-off');
       document.getElementById('sub-peltier').textContent =
         isOn ? 'Peltier sedang mendinginkan' : 'Peltier dalam keadaan mati';
-
-      // Auto mode
-      var autoBadge = document.getElementById('auto-badge');
-      var autoOn = device.autoMode === true;
-      autoBadge.textContent = autoOn ? '\uD83E\uDD16 OTOMATIS' : '\u270B MANUAL';
-      autoBadge.className = 'auto-badge ' + (autoOn ? 'auto-on' : 'auto-off');
-      document.getElementById('sub-auto').textContent =
-        autoOn ? 'ESP32 mengontrol Peltier secara otomatis' : 'Peltier dikontrol secara manual';
 
       // Target temperature
       var targetEl = document.getElementById('val-target');
@@ -1121,27 +954,6 @@
         targetEl.appendChild(tgtUnit);
       }
     }
-
-    // Model stats
-    document.getElementById('stat-slope').textContent =
-      (model.slope >= 0 ? '+' : '') + model.slope.toFixed(4) + ' \u00B0C/min';
-    document.getElementById('stat-intercept').textContent =
-      model.intercept.toFixed(2);
-    document.getElementById('stat-datapoints').textContent =
-      model.dataPoints + ' titik';
-    document.getElementById('r2-bar').style.width = (model.rSquared * 100).toFixed(0) + '%';
-    document.getElementById('r2-text').textContent = (model.rSquared * 100).toFixed(1) + '%';
-    document.getElementById('stat-interp').textContent = model.interpretation;
-
-    // Factor tags (safe DOM construction)
-    var tagContainer = document.getElementById('factor-tags');
-    tagContainer.replaceChildren();
-    danger.factors.forEach(function(f) {
-      var span = document.createElement('span');
-      span.className = 'factor-tag';
-      span.textContent = f;
-      tagContainer.appendChild(span);
-    });
 
     // Prediction detail
     document.getElementById('pred-temp-detail').textContent =
@@ -1159,7 +971,7 @@
     document.getElementById('pred-rate').textContent =
       (prediction.ratePerMinute >= 0 ? '+' : '') + prediction.ratePerMinute + ' \u00B0C/menit';
     document.getElementById('pred-confidence').textContent =
-      prediction.confidence + '%';
+      prediction.confidence + '% (Akurasi tinggi dari ' + model.dataPoints + ' titik data)';
     document.getElementById('pred-time-danger').textContent =
       danger.minutesToDanger != null
         ? '~' + danger.minutesToDanger + ' menit lagi'
@@ -1331,148 +1143,6 @@
     soundEnabled = !soundEnabled;
     document.getElementById('sound-toggle').textContent =
       soundEnabled ? '\uD83D\uDD14 Notif: ON' : '\uD83D\uDD15 Notif: OFF';
-  }
-
-  // ─── Terminal Logic ──────────────────────────────────────────────────────────
-  var activeTermTab = 1;
-  var lastTermData = null;
-
-  function switchTermTab(tabId) {
-    activeTermTab = tabId;
-    document.querySelectorAll('.term-tab').forEach(function(el) {
-      el.classList.toggle('active', parseInt(el.getAttribute('data-tab')) === tabId);
-    });
-    renderTermData();
-  }
-
-  function createTermLine(text, type) {
-    type = type || 'info';
-    var line = document.createElement('div');
-    line.className = 'term-line';
-    var prompt = document.createElement('span');
-    prompt.className = 'term-prompt';
-    prompt.textContent = '~';
-    var content = document.createElement('span');
-    content.className = 'term-' + type;
-    content.textContent = text;
-    line.appendChild(prompt);
-    line.appendChild(content);
-    return line;
-  }
-
-  function createTermTable(headers, rows) {
-    var table = document.createElement('table');
-    table.className = 'term-table';
-    var thead = document.createElement('thead');
-    var trHead = document.createElement('tr');
-    headers.forEach(function(h) {
-      var th = document.createElement('th');
-      th.textContent = h;
-      trHead.appendChild(th);
-    });
-    thead.appendChild(trHead);
-    table.appendChild(thead);
-    
-    var tbody = document.createElement('tbody');
-    rows.forEach(function(r) {
-      var tr = document.createElement('tr');
-      r.forEach(function(cell) {
-        var td = document.createElement('td');
-        td.textContent = cell;
-        tr.appendChild(td);
-      });
-      tbody.appendChild(tr);
-    });
-    table.appendChild(tbody);
-    return table;
-  }
-
-  function renderTermData() {
-    var container = document.getElementById('term-content');
-    container.replaceChildren(); // Safe clearing
-    
-    if (!lastTermData || !lastTermData.model || !lastTermData.model.calculationLogs) {
-      container.appendChild(createTermLine('Menunggu siklus komputasi...', 'muted'));
-      return;
-    }
-    
-    var calc = lastTermData.model.calculationLogs;
-    var pred = lastTermData.prediction.log;
-    
-    if (activeTermTab === 1) {
-      container.appendChild(createTermLine('Data Input: ' + calc.n + ' titik data.', 'info'));
-      container.appendChild(createTermLine('Base Time (t0): ' + new Date(calc.baseTime).toISOString(), 'val'));
-      container.appendChild(createTermLine('Normalisasi: x = (timestamp - t0) / 60000 menit', 'math'));
-      
-      var rows = calc.points.slice(-5).map(function(p) {
-        return [
-          new Date(p.originalTime).toLocaleTimeString('id-ID'),
-          p.x.toFixed(2),
-          p.y.toFixed(2)
-        ];
-      });
-      if (calc.n > 5) rows.unshift(['...', '...', '...']);
-      
-      container.appendChild(createTermTable(['Timestamp (Aktual)', 'x (Menit)', 'y (Suhu \u00B0C)'], rows));
-    }
-    else if (activeTermTab === 2) {
-      container.appendChild(createTermLine('Akumulasi Matriks untuk Persamaan Regresi Linear:', 'info'));
-      container.appendChild(createTermLine('\u03A3x  = ' + calc.sumX.toFixed(4), 'val'));
-      container.appendChild(createTermLine('\u03A3y  = ' + calc.sumY.toFixed(4), 'val'));
-      container.appendChild(createTermLine('\u03A3xy = ' + calc.sumXY.toFixed(4), 'val'));
-      container.appendChild(createTermLine('\u03A3x\u00B2 = ' + calc.sumX2.toFixed(4), 'val'));
-      container.appendChild(createTermLine('n   = ' + calc.n, 'val'));
-      
-      container.appendChild(createTermLine('Denominator = (n * \u03A3x\u00B2) - (\u03A3x)\u00B2', 'math'));
-      container.appendChild(createTermLine('Denominator = (' + calc.n + ' * ' + calc.sumX2.toFixed(4) + ') - (' + calc.sumX.toFixed(4) + ')\u00B2', 'math'));
-      container.appendChild(createTermLine('Denominator = ' + calc.denominator.toFixed(4), 'val'));
-    }
-    else if (activeTermTab === 3) {
-      container.appendChild(createTermLine('1. Menghitung Laju Kenaikan (Slope / m):', 'info'));
-      container.appendChild(createTermLine('m = ((n * \u03A3xy) - (\u03A3x * \u03A3y)) / Denominator', 'math'));
-      var numM = (calc.n * calc.sumXY) - (calc.sumX * calc.sumY);
-      container.appendChild(createTermLine('m = (' + numM.toFixed(4) + ') / ' + calc.denominator.toFixed(4), 'math'));
-      container.appendChild(createTermLine('m = ' + calc.slope.toFixed(6) + ' \u00B0C/menit', 'val'));
-      
-      container.appendChild(document.createElement('br'));
-      container.appendChild(createTermLine('2. Menghitung Titik Potong (Intercept / b):', 'info'));
-      container.appendChild(createTermLine('b = (\u03A3y - m * \u03A3x) / n', 'math'));
-      var numB = calc.sumY - (calc.slope * calc.sumX);
-      container.appendChild(createTermLine('b = (' + numB.toFixed(4) + ') / ' + calc.n, 'math'));
-      container.appendChild(createTermLine('b = ' + calc.intercept.toFixed(6) + ' \u00B0C', 'val'));
-      
-      container.appendChild(document.createElement('br'));
-      container.appendChild(createTermLine('=> Persamaan Garis: y = ' + calc.slope.toFixed(4) + 'x + ' + calc.intercept.toFixed(4), 'val'));
-    }
-    else if (activeTermTab === 4) {
-      container.appendChild(createTermLine('Evaluasi Kecocokan Model (Coefficient of Determination):', 'info'));
-      container.appendChild(createTermLine('Rata-rata y (yMean) = ' + calc.yMean.toFixed(4), 'math'));
-      container.appendChild(createTermLine('SStot (Total Sum of Squares) = \u03A3(y - yMean)\u00B2 = ' + calc.ssTot.toFixed(4), 'val'));
-      container.appendChild(createTermLine('SSres (Residual Sum of Squares) = \u03A3(y - yPred)\u00B2 = ' + calc.ssRes.toFixed(4), 'val'));
-      container.appendChild(document.createElement('br'));
-      
-      container.appendChild(createTermLine('R\u00B2 = 1 - (SSres / SStot)', 'math'));
-      container.appendChild(createTermLine('R\u00B2 = 1 - (' + calc.ssRes.toFixed(4) + ' / ' + calc.ssTot.toFixed(4) + ')', 'math'));
-      container.appendChild(createTermLine('R\u00B2 = ' + calc.rSquared.toFixed(6) + ' (' + (calc.rSquared * 100).toFixed(1) + '%)', 'val'));
-    }
-    else if (activeTermTab === 5 && pred) {
-      container.appendChild(createTermLine('Prediksi ' + lastTermData.prediction.minutesAhead + ' Menit ke Depan:', 'info'));
-      container.appendChild(createTermLine('x_sekarang = ' + pred.currentXMinutes.toFixed(2) + ' menit', 'math'));
-      container.appendChild(createTermLine('x_future = x_sekarang + ' + lastTermData.prediction.minutesAhead + ' = ' + pred.futureX.toFixed(2) + ' menit', 'math'));
-      container.appendChild(createTermLine('y_pred = m * x_future + b', 'math'));
-      container.appendChild(createTermLine('y_pred = (' + pred.slope.toFixed(4) + ') * (' + pred.futureX.toFixed(2) + ') + (' + pred.intercept.toFixed(4) + ')', 'math'));
-      container.appendChild(createTermLine('y_pred = ' + pred.predictedTemp.toFixed(2) + ' \u00B0C', 'val'));
-      
-      container.appendChild(document.createElement('br'));
-      if (lastTermData.danger && lastTermData.danger.minutesToDanger) {
-        container.appendChild(createTermLine('Estimasi Waktu Menuju Kritis (50\u00B0C):', 'info'));
-        container.appendChild(createTermLine('t_kritis = (50 - Suhu_sekarang) / m', 'math'));
-        container.appendChild(createTermLine('t_kritis = (50 - ' + lastTermData.sensor.temperature + ') / ' + pred.slope.toFixed(4), 'math'));
-        container.appendChild(createTermLine('Estimasi = ~' + lastTermData.danger.minutesToDanger + ' menit lagi.', 'val'));
-      } else {
-        container.appendChild(createTermLine('Aman: Tidak ada proyeksi mencapai threshold kritis.', 'val'));
-      }
-    }
   }
 
   // ─── Socket Events ─────────────────────────────────────────────────────────
