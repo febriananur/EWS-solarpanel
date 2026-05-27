@@ -1,154 +1,136 @@
-# 🔥 Solar Panel Fire Early Warning System
+# ❄️ ESP32 Peltier Cooling Early Warning System
 
-Sistem deteksi dini kebakaran panel surya menggunakan **DHT22 + Linear Regression + Firebase + Node.js**.
+Sistem pemantauan dan kontrol suhu otomatis menggunakan **DHT22 + Peltier + Linear Regression + Firebase + Node.js + Telegram**.
 
 ---
 
 ## 🏗️ Arsitektur Sistem
 
-```
-DHT22 Sensor
-    │
-    ▼
-Firebase Realtime DB ──► Node.js Server
-                              │
-                    ┌─────────┼─────────┐
-                    ▼         ▼         ▼
-            Linear     Alert      Socket.IO
-           Regression  System    (Real-time)
-                    └─────────┴─────────┘
-                                  │
-                                  ▼
-                           Dashboard Web
-                        (Grafik + Notifikasi)
+```text
+     DHT22 Sensor ──────┐
+                        ▼
+[ESP32 + Peltier] ◄──► Firebase RTDB ──► Node.js Server
+                        ▲     │               │
+                        │     │     ┌─────────┼─────────┐
+                        │     │     ▼         ▼         ▼
+                        │     │  Linear     Alert     Socket.IO
+                        │     │ Regression  System   (Real-time)
+                        │     │  (Trend)      │         │
+                        │     │               ▼         ▼
+                        │     └────────► Telegram   Dashboard Web
+                        │                  Bot     (Grafik + Kontrol)
+                        └───────────────────────────────┘
+                                     Kontrol Setpoint
 ```
 
 ---
 
-## ⚙️ Cara Kerja Linear Regression
+## ⚙️ Cara Kerja Linear Regression & Sistem EWS
 
-**Rumus:**
-```
-y = mx + b
-
-m (slope)     = (n·Σxy - Σx·Σy) / (n·Σx² - (Σx)²)
-b (intercept) = (Σy - m·Σx) / n
-
-x = waktu dalam menit (dinormalisasi dari 0)
-y = suhu dalam °C
-```
+Sistem menggunakan Algoritma Linear Regression untuk memprediksi suhu masa depan berdasarkan data historis:
 
 **Alur:**
-1. Ambil 30 data historis dari Firebase
-2. Train model → hitung slope & intercept
-3. Prediksi suhu 10 menit ke depan
-4. Jika prediksi > threshold → kirim peringatan
+1. Ambil 30 titik data historis (suhu) terakhir dari Firebase.
+2. Train model untuk mendapatkan nilai slope (tren) & intercept.
+3. Prediksi suhu N menit ke depan (default: 10 menit).
+4. Jika prediksi atau suhu aktual melebihi threshold (batas aman), sistem akan:
+   - Klasifikasi level bahaya (WARNING, DANGER, CRITICAL)
+   - Kirim notifikasi Telegram sesuai rate limit.
+   - Update status visual di Dashboard secara real-time.
 
 ---
 
-## 🚦 Level Bahaya
+## 🚦 Level Bahaya (Threshold)
 
-| Level    | Suhu      | Aksi                          |
-|----------|-----------|-------------------------------|
-| NORMAL   | < 45°C    | Monitor rutin                 |
-| WASPADA  | 45–60°C   | Periksa ventilasi             |
-| BAHAYA   | 60–75°C   | Periksa segera                |
-| KRITIS   | > 75°C    | Matikan sistem, hubungi DAMKAR|
+Diatur melalui `.env` atau `src/alertSystem.js`:
+
+| Level    | Kondisi                       | Notifikasi Telegram |
+|----------|-------------------------------|---------------------|
+| NORMAL   | Suhu sesuai target/aman       | -                   |
+| WASPADA  | Suhu mendekati ambang batas   | Maks 1x / 30 menit  |
+| BAHAYA   | Suhu melebihi batas bahaya    | Maks 1x / 15 menit  |
+| KRITIS   | Suhu ekstrem / darurat        | Maks 1x / 5 menit   |
 
 ---
 
 ## 🚀 Instalasi & Jalankan
 
-### 1. Clone / copy project ini
+### 1. Clone Project
 ```bash
-cd solar-fire-ews
+git clone <repo-url>
+cd linear-regresion
 npm install
 ```
 
-### 2. Setup environment variables
+### 2. Setup Environment Variables
+Copy file example:
 ```bash
 cp .env.example .env
-# Edit .env dengan credential Firebase kamu
 ```
-
-### 3. Isi .env dengan data Firebase
+Isi `.env` dengan kredensial Firebase dan Telegram:
 ```env
+# Firebase
 FIREBASE_PROJECT_ID=your-project-id
 FIREBASE_PRIVATE_KEY_ID=your-key-id
 FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
 FIREBASE_CLIENT_EMAIL=firebase-adminsdk@your-project.iam.gserviceaccount.com
 FIREBASE_DATABASE_URL=https://your-project-default-rtdb.firebaseio.com
+
+# Sensor & Threshold
+SENSOR_ID=esp32_01
+PREDICTION_MINUTES=10
+
+# Telegram Bot
+TELEGRAM_BOT_TOKEN=your-bot-token
+TELEGRAM_CHAT_ID=your-chat-id
 ```
 
-### 4. Jalankan
+### 3. Jalankan Server
 
-**Mode Demo (tanpa hardware, data simulasi):**
+**Mode Demo (Simulasi Data):**
+Berguna jika belum ada hardware ESP32.
 ```bash
 USE_MOCK=true node src/server.js
 ```
 
-**Mode Produksi (pakai Firebase real):**
+**Mode Produksi (Hardware Asli):**
 ```bash
 node src/server.js
 ```
 
-**Development dengan auto-reload:**
+**Development Mode (Auto-Reload):**
 ```bash
 npm run dev
 ```
 
-### 5. Buka Dashboard
-```
-http://localhost:3000
-```
+Dashboard dapat diakses di: **`http://localhost:3000`**
 
 ---
 
 ## 📡 Struktur Data Firebase
 
-Data dari ESP32/Arduino yang dikirim ke Firebase harus mengikuti format ini:
-
+### 1. Data Sensor (`/devices/{device_id}`)
 ```json
-// Path: /sensors/panel_01/current
+// Path: /devices/esp32_01/latest
 {
-  "temperature": 52.3,
-  "humidity": 35.2,
-  "timestamp": 1710000000000
-}
-
-// Path: /sensors/panel_01/history/{push_id}
-{
-  "temperature": 52.3,
-  "humidity": 35.2,
+  "device_id": "esp32_01",
+  "temperature": 27.5,
+  "temperature_raw": 30.0,
+  "temperature_offset": -2.5,
+  "humidity": 65.2,
+  "peltier_status": "ON",
+  "auto_mode": true,
+  "target_temperature": 28.0,
   "timestamp": 1710000000000
 }
 ```
 
-### Kode Arduino/ESP32 untuk kirim data:
-```cpp
-#include <DHT.h>
-#include <FirebaseESP32.h>
-
-#define DHTPIN 4
-#define DHTTYPE DHT22
-DHT dht(DHTPIN, DHTTYPE);
-
-void sendToFirebase() {
-  float temp = dht.readTemperature();
-  float hum  = dht.readHumidity();
-  long  ts   = millis(); // Atau gunakan NTP timestamp
-
-  // Kirim ke current (untuk real-time)
-  Firebase.setFloat(fbdo, "/sensors/panel_01/current/temperature", temp);
-  Firebase.setFloat(fbdo, "/sensors/panel_01/current/humidity", hum);
-  Firebase.setInt(fbdo,   "/sensors/panel_01/current/timestamp", ts);
-
-  // Push ke history (untuk training model)
-  FirebaseJson json;
-  json.set("temperature", temp);
-  json.set("humidity", hum);
-  json.set("timestamp", ts);
-  Firebase.pushJSON(fbdo, "/sensors/panel_01/history", json);
+### 2. Kontrol Aktuator (`/control/{device_id}`)
+```json
+// Path: /control/esp32_01
+{
+  "target_temperature": 28.0,
+  "auto_mode": true
 }
 ```
 
@@ -156,42 +138,34 @@ void sendToFirebase() {
 
 ## 🔌 API Endpoints
 
-| Method | Endpoint        | Deskripsi                          |
-|--------|-----------------|------------------------------------|
-| GET    | `/`             | Dashboard web                      |
-| GET    | `/api/status`   | Status sistem & mode               |
-| GET    | `/api/latest`   | Data sensor + prediksi terkini     |
-| GET    | `/api/alerts`   | Riwayat semua notifikasi           |
-| POST   | `/api/analyze`  | Trigger manual analisis            |
-| POST   | `/api/predict`  | Prediksi custom (body: {minutes})  |
+| Method | Endpoint               | Deskripsi                                    |
+|--------|------------------------|----------------------------------------------|
+| GET    | `/`                    | Buka Dashboard UI                            |
+| GET    | `/api/status`          | Status server, mode (demo/prod), & device ID |
+| GET    | `/api/telegram-status` | Status dan rate limit notifikasi Telegram    |
+| GET    | `/api/latest`          | Data sensor & prediksi terkini               |
+| GET    | `/api/alerts`          | Riwayat notifikasi sistem                    |
+| GET    | `/api/control`         | Ambil status setpoint dan mode kontrol       |
+| POST   | `/api/control`         | Ubah setpoint target suhu / auto mode        |
+| POST   | `/api/mock/trend`      | Ubah tren simulasi (khusus `USE_MOCK=true`)  |
+| POST   | `/api/analyze`         | Trigger analisis manual                      |
+| POST   | `/api/predict`         | Cek prediksi custom `N` menit ke depan       |
 
 ---
 
 ## 📁 Struktur File
 
 ```
-solar-fire-ews/
+linear-regresion/
 ├── src/
-│   ├── server.js           # Main server (Express + Socket.IO)
-│   ├── linearRegression.js # Algoritma Linear Regression
-│   ├── alertSystem.js      # Klasifikasi bahaya & notifikasi
-│   └── firebaseService.js  # Firebase CRUD + mock data
+│   ├── server.js           # Server utama (Express + Socket.IO)
+│   ├── linearRegression.js # Algoritma Prediksi Suhu
+│   ├── alertSystem.js      # Klasifikasi bahaya & threshold
+│   ├── firebaseService.js  # Interaksi Firebase (CRUD & Mock)
+│   └── telegramService.js  # Notifikasi Telegram & Rate Limiting
 ├── public/
-│   └── index.html          # Dashboard real-time
-├── .env.example
+│   └── index.html          # Dashboard Web UI
+├── prototype_server.ino    # Kode ESP32 (Arduino IDE)
 ├── package.json
-└── README.md
-```
-
----
-
-## 🔧 Konfigurasi Threshold
-
-Edit di `.env` atau langsung di `src/alertSystem.js`:
-
-```env
-TEMP_WARNING=55        # °C mulai waspada
-TEMP_DANGER=70         # °C bahaya
-HUMIDITY_MIN=10        # % terlalu kering
-PREDICTION_MINUTES=10  # Prediksi berapa menit ke depan
+└── .env.example
 ```
