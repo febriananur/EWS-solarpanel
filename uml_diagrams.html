@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UML Diagrams - EWS ESP32</title>
+    
+    <!-- Load Markdown rendering (marked) -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    
+    <!-- Load Mermaid.js for diagram rendering -->
+    <script type="module">
+        import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+        mermaid.initialize({ startOnLoad: false, theme: 'default' });
+
+        // Function to render Markdown and Mermaid
+        async function renderContent() {
+            const markdownContent = `
+# UML Diagrams: ESP32 Peltier Cooling Early Warning System
+
+Berikut adalah rancangan diagram UML secara detail untuk sistem Early Warning System (EWS) pada project ini. Diagram-diagram ini akan membantu memahami arsitektur sistem, alur pemrosesan data, interaksi antar komponen, dan logika penentuan level bahaya.
+
+## 1. System Architecture Diagram
+Diagram ini menunjukkan komponen-komponen utama dalam sistem, termasuk hardware ESP32, Firebase sebagai jembatan data, Node.js backend untuk pemrosesan Machine Learning (Linear Regression), dan berbagai antarmuka pengguna (Dashboard & Telegram).
+
+<div class="mermaid">
+graph TD
+    ESP[ESP32 Sensor Node] -->|Push Sensor Data| FB[(Firebase Realtime DB)]
+    FB -->|Read History & Latest| S[Node.js Server]
+    S -->|Control Commands| FB
+    FB -->|Read Control Setpoint| ESP
+    S -->|Socket.IO Real-time Updates| D[Web Dashboard]
+    D -->|API Requests/Control| S
+    S -->|Alert Notifications| TG[Telegram API]
+    
+    subgraph Node.js Backend Server
+        S_Main(server.js)
+        S_LR(linearRegression.js)
+        S_Alert(alertSystem.js)
+        S_FB(firebaseService.js)
+        S_TG(telegramService.js)
+        S_Main --> S_LR
+        S_Main --> S_Alert
+        S_Main --> S_FB
+        S_Main --> S_TG
+    end
+</div>
+
+## 2. Sequence Diagram: Data Processing Flow
+Diagram sekuens ini memvisualisasikan bagaimana alur fungsi utama \`processEarlyWarning()\` yang dieksekusi secara periodik (oleh cron job) di \`server.js\` bekerja, mulai dari penarikan data hingga penyiaran notifikasi.
+
+<div class="mermaid">
+sequenceDiagram
+    participant Cron as Scheduler (node-cron)
+    participant Server as server.js
+    participant Firebase as firebaseService.js
+    participant LR as LinearRegression
+    participant Alert as alertSystem.js
+    participant Telegram as telegramService.js
+    participant Dashboard as Web Dashboard
+
+    Cron->>Server: Execute processEarlyWarning()
+    Server->>Firebase: getHistoricalData(deviceId, 30)
+    Firebase-->>Server: history array (30 data point terakhir)
+    Server->>Firebase: getCurrentReading(deviceId)
+    Firebase-->>Server: currentReading
+
+    Server->>LR: train(history)
+    LR-->>Server: modelStats (slope, rSquared, etc.)
+    
+    Server->>LR: predict(PREDICTION_MINUTES)
+    LR-->>Server: prediction Object
+    
+    Server->>LR: minutesToThreshold(...)
+    LR-->>Server: minutesToDanger
+    
+    Server->>Alert: classifyDanger(currentReading, prediction, modelStats)
+    Alert-->>Server: dangerInfo (level, factors)
+
+    Server->>Alert: generateAlert(dangerInfo, ...)
+    Alert-->>Server: alertObject (jika terdeteksi bahaya)
+
+    alt alertObject !== null
+        Server->>Firebase: saveAlert(deviceId, alertObject)
+        Server->>Telegram: notify(alertObject, ...)
+    end
+
+    Server->>Dashboard: io.emit('sensor-update', latestState)
+</div>
+
+## 3. Class & Module Diagram
+Meskipun menggunakan JavaScript/Node.js, kita bisa memetakannya sebagai Class Diagram untuk melihat struktur modul dan fungsi (method) apa saja yang diekspos oleh setiap komponen, khususnya \`LinearRegression\` yang menggunakan paradigm Object-Oriented.
+
+<div class="mermaid">
+classDiagram
+    class LinearRegression {
+        +Number slope
+        +Number intercept
+        +Number rSquared
+        +Array dataPoints
+        +Boolean isTrained
+        +Object calculationLogs
+        +train(dataPoints) Object
+        +predict(minutesAhead) Object
+        +minutesToThreshold(thresholdTemp, currentTemp) Number
+        +getRegressionLine(numPoints) Array
+        -_calculateRSquared(points) Object
+        -_interpretSlope() String
+    }
+
+    class firebaseService {
+        <<module>>
+        +initFirebase()
+        +getCurrentReading(deviceId) Object
+        +getHistoricalData(deviceId, limitPoints) Array
+        +subscribeToSensor(deviceId, callback) Function
+        +getControlState(deviceId) Object
+        +setControl(deviceId, controlData) Object
+        +savePrediction(deviceId, predictionData)
+        +saveAlert(deviceId, alertData)
+        +generateMockData(baseTemp, trend) Object
+    }
+
+    class alertSystem {
+        <<module>>
+        +Object THRESHOLDS
+        +classifyDanger(sensorData, prediction, modelStats) Object
+        +generateAlert(dangerInfo, sensorData, prediction, minutesToDanger) Object
+        -buildFactorList(temperature, humidity, slope, prediction) Array
+    }
+
+    class telegramService {
+        <<module>>
+        +notify(alert, prediction, modelStats, minutesToDanger)
+        +onStatusNormal()
+        +getStatus() Object
+    }
+
+    server_js --> LinearRegression : instantiates
+    server_js --> firebaseService : imports & uses
+    server_js --> alertSystem : imports & uses
+    server_js --> telegramService : imports & uses
+</div>
+
+## 4. Flowchart: Danger Classification Logic (\`classifyDanger\`)
+Flowchart ini menggambarkan secara spesifik bagaimana sistem (\`alertSystem.js\`) menentukan level bahaya (Normal, Warning, Danger, Critical) berdasarkan penggabungan data suhu saat ini, prediksi suhu ke depan, dan tingkat kelembaban.
+
+<div class="mermaid">
+flowchart TD
+    Start([Mulai Klasifikasi Bahaya]) --> EvalTemp[Evaluasi Suhu Saat Ini]
+    
+    EvalTemp --> TempCrit{Suhu >= 50°C?}
+    TempCrit -- Yes --> SetTempCrit[tempLevel = critical]
+    TempCrit -- No --> TempDanger{Suhu >= 40°C?}
+    TempDanger -- Yes --> SetTempDanger[tempLevel = danger]
+    TempDanger -- No --> TempWarn{Suhu >= 30°C?}
+    TempWarn -- Yes --> SetTempWarn[tempLevel = warning]
+    TempWarn -- No --> SetTempNorm[tempLevel = normal]
+    
+    SetTempCrit --> EvalPred
+    SetTempDanger --> EvalPred
+    SetTempWarn --> EvalPred
+    SetTempNorm --> EvalPred
+
+    EvalPred[Evaluasi Prediksi Suhu] --> PredCrit{Prediksi >= 50°C?}
+    PredCrit -- Yes --> SetPredCrit[predictionRisk = critical]
+    PredCrit -- No --> PredDanger{Prediksi >= 40°C?}
+    PredDanger -- Yes --> SetPredDanger[predictionRisk = danger]
+    PredDanger -- No --> PredWarn{Prediksi >= 30°C?}
+    PredWarn -- Yes --> SetPredWarn[predictionRisk = warning]
+    PredWarn -- No --> SetPredNorm[predictionRisk = normal]
+    
+    SetPredCrit --> EvalHum
+    SetPredDanger --> EvalHum
+    SetPredWarn --> EvalHum
+    SetPredNorm --> EvalHum
+
+    EvalHum[Evaluasi Kelembaban] --> HumCrit{Hum < 10%?}
+    HumCrit -- Yes --> SetHumCrit[humidityRisk = critical]
+    HumCrit -- No --> HumWarn{Hum < 20%?}
+    HumWarn -- Yes --> SetHumWarn[humidityRisk = warning]
+    HumWarn -- No --> SetHumNorm[humidityRisk = normal]
+    
+    SetHumCrit --> FinalLevel
+    SetHumWarn --> FinalLevel
+    SetHumNorm --> FinalLevel
+    
+    FinalLevel[Tentukan Level Akhir<br/>Ambil level tertinggi dari:<br/>tempLevel, predictionRisk, & humidityRisk] --> End([Return Final Level])
+</div>
+            `;
+            
+            document.getElementById('content').innerHTML = marked.parse(markdownContent);
+            await mermaid.run({
+                querySelector: '.mermaid'
+            });
+        }
+        
+        window.onload = renderContent;
+    </script>
+
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 40px;
+            background-color: #fff;
+        }
+        h1, h2, h3 {
+            border-bottom: 1px solid #eaecef;
+            padding-bottom: 0.3em;
+            margin-top: 24px;
+            margin-bottom: 16px;
+        }
+        code {
+            background-color: rgba(27,31,35,0.05);
+            padding: 0.2em 0.4em;
+            border-radius: 3px;
+            font-family: SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace;
+        }
+        .mermaid {
+            display: flex;
+            justify-content: center;
+            margin: 30px 0;
+            background-color: #f6f8fa;
+            border-radius: 6px;
+            padding: 20px;
+        }
+        @media print {
+            body {
+                padding: 0;
+                margin: 0;
+            }
+            .mermaid {
+                break-inside: avoid;
+                page-break-inside: avoid;
+                background-color: transparent !important;
+            }
+            h1, h2, h3 {
+                page-break-after: avoid;
+            }
+            /* Add page breaks between sections for cleaner PDF */
+            h2 {
+                page-break-before: always;
+            }
+            h2:first-of-type {
+                page-break-before: avoid;
+            }
+        }
+        /* Top Banner for user */
+        #print-banner {
+            background-color: #0366d6;
+            color: white;
+            padding: 15px;
+            text-align: center;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            font-weight: bold;
+        }
+        @media print {
+            #print-banner { display: none; }
+        }
+    </style>
+</head>
+<body>
+    <div id="print-banner">
+        Halaman ini siap untuk dicetak menjadi PDF. <br>
+        Tekan <strong>Ctrl + P</strong> (Windows/Linux) atau <strong>Cmd + P</strong> (Mac), lalu pilih <strong>"Save as PDF"</strong>.
+    </div>
+    <div id="content">Loading content...</div>
+</body>
+</html>
