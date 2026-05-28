@@ -1,0 +1,905 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Penjelasan UML Diagrams — ESP32 Peltier Cooling Early Warning System</title>
+    <style>
+        @page {
+            margin: 2cm 2.5cm;
+            size: A4;
+        }
+        * { box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+            font-size: 11pt;
+            line-height: 1.7;
+            color: #1a1a2e;
+            margin: 0;
+            padding: 0;
+            background: #fff;
+        }
+
+        /* ── Cover Page ─────────────────────────────────────────────── */
+        .cover {
+            page-break-after: always;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 90vh;
+            text-align: center;
+            padding: 40px;
+        }
+        .cover-icon {
+            font-size: 64px;
+            margin-bottom: 20px;
+        }
+        .cover h1 {
+            font-size: 26pt;
+            color: #0f3460;
+            margin: 0 0 10px 0;
+            border: none;
+            padding: 0;
+        }
+        .cover h2 {
+            font-size: 16pt;
+            color: #e94560;
+            font-weight: 400;
+            margin: 0 0 40px 0;
+            border: none;
+            page-break-before: avoid;
+        }
+        .cover-meta {
+            font-size: 11pt;
+            color: #555;
+            line-height: 2;
+        }
+        .cover-meta strong {
+            color: #0f3460;
+        }
+        .cover-line {
+            width: 200px;
+            height: 3px;
+            background: linear-gradient(90deg, #0f3460, #e94560);
+            border: none;
+            margin: 30px auto;
+        }
+
+        /* ── Headings ───────────────────────────────────────────────── */
+        h1 {
+            font-size: 20pt;
+            color: #0f3460;
+            border-bottom: 3px solid #0f3460;
+            padding-bottom: 8px;
+            margin-top: 0;
+        }
+        h2 {
+            font-size: 15pt;
+            color: #16213e;
+            border-bottom: 2px solid #e94560;
+            padding-bottom: 6px;
+            margin-top: 30px;
+            page-break-before: always;
+        }
+        h2:first-of-type {
+            page-break-before: avoid;
+        }
+        h3 {
+            font-size: 12pt;
+            color: #0f3460;
+            margin-top: 20px;
+            margin-bottom: 8px;
+        }
+        h4 {
+            font-size: 11pt;
+            color: #533483;
+            margin-top: 15px;
+            margin-bottom: 5px;
+        }
+
+        /* ── Tables ─────────────────────────────────────────────────── */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 12px 0 20px 0;
+            font-size: 10pt;
+        }
+        th, td {
+            border: 1px solid #c4c4c4;
+            padding: 8px 10px;
+            text-align: left;
+            vertical-align: top;
+        }
+        th {
+            background-color: #0f3460;
+            color: #fff;
+            font-weight: 600;
+        }
+        tr:nth-child(even) {
+            background-color: #f8f9ff;
+        }
+
+        /* ── Code ───────────────────────────────────────────────────── */
+        code {
+            background-color: #f0f0f5;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Consolas', 'Courier New', monospace;
+            font-size: 9.5pt;
+            color: #c0392b;
+        }
+        pre {
+            background-color: #1a1a2e;
+            color: #e0e0e0;
+            padding: 15px 18px;
+            border-radius: 6px;
+            font-size: 9pt;
+            line-height: 1.5;
+            overflow-x: auto;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        pre code {
+            background: none;
+            color: inherit;
+            padding: 0;
+        }
+
+        /* ── Info Boxes ─────────────────────────────────────────────── */
+        .info-box {
+            border-left: 4px solid;
+            padding: 12px 16px;
+            margin: 15px 0;
+            border-radius: 0 6px 6px 0;
+            page-break-inside: avoid;
+        }
+        .info-box.blue {
+            border-color: #3498db;
+            background: #eaf4fd;
+        }
+        .info-box.green {
+            border-color: #2ecc71;
+            background: #eafaf1;
+        }
+        .info-box.orange {
+            border-color: #e67e22;
+            background: #fef5e7;
+        }
+        .info-box.red {
+            border-color: #e74c3c;
+            background: #fdedec;
+        }
+        .info-box .box-title {
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        /* ── Flow Arrow Boxes ───────────────────────────────────────── */
+        .flow-container {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            margin: 15px 0;
+        }
+        .flow-box {
+            background: #eaf4fd;
+            border: 2px solid #3498db;
+            border-radius: 8px;
+            padding: 8px 14px;
+            text-align: center;
+            font-size: 9pt;
+            font-weight: 600;
+            color: #16213e;
+            min-width: 100px;
+        }
+        .flow-box.highlight {
+            background: #e94560;
+            border-color: #e94560;
+            color: #fff;
+        }
+        .flow-box.green-box {
+            background: #eafaf1;
+            border-color: #2ecc71;
+        }
+        .flow-arrow {
+            font-size: 16pt;
+            color: #0f3460;
+            font-weight: bold;
+        }
+
+        /* ── Level badges ───────────────────────────────────────────── */
+        .badge {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 9pt;
+            font-weight: 700;
+            color: #fff;
+        }
+        .badge.normal   { background: #2ecc71; }
+        .badge.warning  { background: #f39c12; }
+        .badge.danger   { background: #e74c3c; }
+        .badge.critical { background: #8e44ad; }
+
+        /* ── Daftar Isi ─────────────────────────────────────────────── */
+        .toc {
+            page-break-after: always;
+        }
+        .toc ul {
+            list-style: none;
+            padding: 0;
+        }
+        .toc li {
+            padding: 6px 0;
+            border-bottom: 1px dotted #ccc;
+            font-size: 11pt;
+        }
+        .toc li strong {
+            color: #0f3460;
+        }
+
+        /* ── Misc ───────────────────────────────────────────────────── */
+        .page-break { page-break-before: always; }
+        p { margin: 8px 0; }
+        ul, ol { margin: 8px 0 12px 20px; }
+        li { margin-bottom: 4px; }
+        .text-center { text-align: center; }
+        .text-muted { color: #888; font-size: 9pt; }
+        .mt-20 { margin-top: 20px; }
+
+        .component-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin: 15px 0;
+        }
+        .component-card {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 12px 15px;
+            page-break-inside: avoid;
+        }
+        .component-card h4 {
+            margin-top: 0;
+            margin-bottom: 6px;
+            color: #0f3460;
+        }
+        .component-card .file {
+            font-family: monospace;
+            font-size: 9pt;
+            color: #e94560;
+        }
+
+        footer {
+            text-align: center;
+            font-size: 9pt;
+            color: #888;
+            margin-top: 40px;
+            border-top: 1px solid #ddd;
+            padding-top: 10px;
+        }
+    </style>
+</head>
+<body>
+
+<!-- ════════════════════════════════════════════════════════════════════ -->
+<!-- COVER PAGE                                                         -->
+<!-- ════════════════════════════════════════════════════════════════════ -->
+<div class="cover">
+    <div class="cover-icon">🔥☀️</div>
+    <h1>Penjelasan UML Diagrams</h1>
+    <h2>ESP32 Peltier Cooling<br>Early Warning System (EWS)</h2>
+    <hr class="cover-line">
+    <div class="cover-meta">
+        <strong>Project:</strong> Solar Panel Fire Early Warning System<br>
+        <strong>Stack:</strong> Node.js · Express · Socket.IO · Firebase · Linear Regression<br>
+        <strong>Hardware:</strong> ESP32 + DHT22 Sensor + Peltier Cooler<br>
+        <strong>Tanggal:</strong> Mei 2026<br>
+    </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════════ -->
+<!-- DAFTAR ISI                                                         -->
+<!-- ════════════════════════════════════════════════════════════════════ -->
+<div class="toc">
+    <h1>Daftar Isi</h1>
+    <ul>
+        <li><strong>1.</strong> Pendahuluan &mdash; Gambaran Umum Sistem</li>
+        <li><strong>2.</strong> Diagram 1: System Architecture Diagram &mdash; Arsitektur dan Komponen Sistem</li>
+        <li><strong>3.</strong> Diagram 2: Sequence Diagram &mdash; Alur Pemrosesan Data (processEarlyWarning)</li>
+        <li><strong>4.</strong> Diagram 3: Class &amp; Module Diagram &mdash; Struktur Modul dan Fungsi</li>
+        <li><strong>5.</strong> Diagram 4: Flowchart Danger Classification &mdash; Logika Klasifikasi Bahaya</li>
+        <li><strong>6.</strong> Kesesuaian Implementasi dengan Rancangan UML</li>
+    </ul>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════════ -->
+<!-- 1. PENDAHULUAN                                                     -->
+<!-- ════════════════════════════════════════════════════════════════════ -->
+<h2>1. Pendahuluan — Gambaran Umum Sistem</h2>
+
+<p>
+    <strong>Early Warning System (EWS) untuk Panel Surya</strong> adalah sistem peringatan dini berbasis
+    <em>Machine Learning</em> (Linear Regression) yang dirancang untuk mendeteksi potensi kebakaran
+    pada panel surya akibat <em>overheating</em>. Sistem ini menggunakan sensor suhu dan kelembaban
+    DHT22 yang terpasang pada modul ESP32, dan memanfaatkan pendinginan Peltier sebagai mekanisme
+    mitigasi otomatis.
+</p>
+
+<div class="info-box blue">
+    <div class="box-title">📌 Tujuan Utama Sistem</div>
+    <ol>
+        <li>Mengumpulkan data suhu &amp; kelembaban secara real-time dari sensor DHT22 via ESP32</li>
+        <li>Memprediksi tren suhu ke depan menggunakan algoritma <strong>Linear Regression</strong></li>
+        <li>Mengklasifikasikan level bahaya (Normal → Warning → Danger → Critical)</li>
+        <li>Mengirimkan notifikasi peringatan melalui <strong>Telegram Bot</strong> dan <strong>Web Dashboard</strong></li>
+        <li>Mengontrol sistem pendinginan Peltier secara otomatis maupun manual</li>
+    </ol>
+</div>
+
+<h3>Komponen Utama Sistem</h3>
+
+<div class="component-grid">
+    <div class="component-card">
+        <h4>🔧 Hardware</h4>
+        <p>ESP32 microcontroller dengan sensor DHT22 (suhu + kelembaban) dan modul Peltier Cooler. ESP32 membaca sensor dan mengirim data ke Firebase.</p>
+        <div class="file">prototype_server.ino</div>
+    </div>
+    <div class="component-card">
+        <h4>🗄️ Database</h4>
+        <p>Firebase Realtime Database sebagai jembatan data antara ESP32 (hardware) dan Node.js server (backend). Menyimpan data sensor, riwayat, alert, dan kontrol.</p>
+    </div>
+    <div class="component-card">
+        <h4>⚙️ Backend</h4>
+        <p>Node.js server dengan Express + Socket.IO. Menjalankan analisis Linear Regression, klasifikasi bahaya, dan mengelola notifikasi secara periodik.</p>
+        <div class="file">src/server.js</div>
+    </div>
+    <div class="component-card">
+        <h4>📊 Frontend</h4>
+        <p>Web Dashboard real-time yang menampilkan data sensor, grafik tren suhu, prediksi, level bahaya, dan kontrol Peltier. Update via Socket.IO.</p>
+        <div class="file">public/index.html</div>
+    </div>
+</div>
+
+<h3>Technology Stack</h3>
+
+<table>
+    <tr><th>Layer</th><th>Teknologi</th><th>Fungsi</th></tr>
+    <tr><td>Hardware</td><td>ESP32 + DHT22 + Peltier</td><td>Akuisisi data sensor &amp; kontrol pendinginan</td></tr>
+    <tr><td>Database</td><td>Firebase Realtime Database</td><td>Penyimpanan data real-time &amp; sinkronisasi</td></tr>
+    <tr><td>Backend</td><td>Node.js, Express, Socket.IO, node-cron</td><td>Pemrosesan data, ML, API, notifikasi</td></tr>
+    <tr><td>ML Engine</td><td>Linear Regression (custom)</td><td>Prediksi tren suhu &amp; estimasi waktu kritis</td></tr>
+    <tr><td>Notifikasi</td><td>Telegram Bot API</td><td>Alert darurat ke pengguna via chat</td></tr>
+    <tr><td>Dashboard</td><td>HTML/CSS/JS + Chart.js + Socket.IO Client</td><td>Visualisasi data real-time</td></tr>
+</table>
+
+<!-- ════════════════════════════════════════════════════════════════════ -->
+<!-- 2. DIAGRAM 1: SYSTEM ARCHITECTURE                                  -->
+<!-- ════════════════════════════════════════════════════════════════════ -->
+<h2>2. Diagram 1: System Architecture Diagram</h2>
+
+<p>
+    Diagram arsitektur sistem ini menunjukkan <strong>komponen-komponen utama</strong> dalam sistem
+    dan bagaimana mereka saling <strong>berkomunikasi</strong>. Diagram ini berbentuk <em>graph</em>
+    yang menggambarkan aliran data dari hardware (ESP32) hingga ke antarmuka pengguna (Dashboard &amp; Telegram).
+</p>
+
+<h3>2.1 Alur Komunikasi Antar Komponen</h3>
+
+<div class="flow-container">
+    <div class="flow-box">🔧 ESP32<br><small>Sensor Node</small></div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-box">🗄️ Firebase<br><small>Realtime DB</small></div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-box highlight">⚙️ Node.js<br><small>Server</small></div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-box green-box">📊 Dashboard<br><small>Socket.IO</small></div>
+</div>
+<div class="flow-container">
+    <div class="flow-box highlight">⚙️ Node.js Server</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-box green-box">📱 Telegram<br><small>Bot API</small></div>
+</div>
+<div class="flow-container">
+    <div class="flow-box highlight">⚙️ Node.js Server</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-box">🗄️ Firebase</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-box">🔧 ESP32<br><small>(baca setpoint)</small></div>
+</div>
+
+<h3>2.2 Penjelasan Setiap Koneksi</h3>
+
+<table>
+    <tr><th>Dari</th><th>Ke</th><th>Jenis</th><th>Penjelasan</th></tr>
+    <tr>
+        <td>ESP32</td>
+        <td>Firebase</td>
+        <td>Push Data</td>
+        <td>ESP32 membaca sensor DHT22 secara periodik, lalu mengirim data suhu &amp; kelembaban ke path <code>/devices/{device_id}/latest</code> dan <code>/history</code> di Firebase.</td>
+    </tr>
+    <tr>
+        <td>Firebase</td>
+        <td>Node.js Server</td>
+        <td>Read Data</td>
+        <td>Server membaca data historis (<code>getHistoricalData</code>) dan data terkini (<code>getCurrentReading</code>) dari Firebase untuk dianalisis.</td>
+    </tr>
+    <tr>
+        <td>Node.js Server</td>
+        <td>Firebase</td>
+        <td>Write Control</td>
+        <td>Server menulis perintah kontrol (target suhu, mode auto) ke path <code>/control/{device_id}</code> agar ESP32 dapat membacanya.</td>
+    </tr>
+    <tr>
+        <td>Firebase</td>
+        <td>ESP32</td>
+        <td>Read Setpoint</td>
+        <td>ESP32 membaca target suhu dan mode auto dari <code>/control/{device_id}</code> untuk menentukan apakah Peltier harus ON/OFF.</td>
+    </tr>
+    <tr>
+        <td>Node.js Server</td>
+        <td>Web Dashboard</td>
+        <td>Socket.IO</td>
+        <td>Server menyiarkan (<code>emit</code>) data terbaru ke semua dashboard yang terhubung via event <code>'sensor-update'</code>.</td>
+    </tr>
+    <tr>
+        <td>Web Dashboard</td>
+        <td>Node.js Server</td>
+        <td>HTTP API</td>
+        <td>Dashboard mengirim request ke REST API server (contoh: <code>POST /api/control</code>) untuk mengubah pengaturan.</td>
+    </tr>
+    <tr>
+        <td>Node.js Server</td>
+        <td>Telegram</td>
+        <td>HTTPS API</td>
+        <td>Saat terdeteksi bahaya, server mengirim notifikasi ke Telegram Bot API dengan format MarkdownV2.</td>
+    </tr>
+</table>
+
+<h3>2.3 Struktur Internal Node.js Backend</h3>
+
+<p>Backend terdiri dari 5 file/modul utama yang saling terhubung. <code>server.js</code> sebagai orchestrator yang mengimpor dan mengoordinasikan seluruh modul:</p>
+
+<table>
+    <tr><th>Modul</th><th>File</th><th>Peran</th></tr>
+    <tr>
+        <td><strong>Server (Main)</strong></td>
+        <td><code>server.js</code></td>
+        <td>Orchestrator utama. Menjalankan Express server, Socket.IO, cron scheduler, dan memanggil semua modul lain dalam fungsi <code>processEarlyWarning()</code>.</td>
+    </tr>
+    <tr>
+        <td><strong>Linear Regression</strong></td>
+        <td><code>linearRegression.js</code></td>
+        <td>Engine Machine Learning. Melatih model regresi linear, memprediksi suhu, dan menghitung waktu menuju threshold bahaya.</td>
+    </tr>
+    <tr>
+        <td><strong>Alert System</strong></td>
+        <td><code>alertSystem.js</code></td>
+        <td>Klasifikasi bahaya berdasarkan suhu, kelembaban, dan prediksi. Menghasilkan objek alert dengan pesan terformat.</td>
+    </tr>
+    <tr>
+        <td><strong>Firebase Service</strong></td>
+        <td><code>firebaseService.js</code></td>
+        <td>Abstraksi akses ke Firebase Realtime Database. Menangani CRUD data sensor, kontrol, prediksi, dan alert.</td>
+    </tr>
+    <tr>
+        <td><strong>Telegram Service</strong></td>
+        <td><code>telegramService.js</code></td>
+        <td>Pengiriman notifikasi ke Telegram dengan fitur rate limiting per-level agar tidak spam.</td>
+    </tr>
+</table>
+
+<div class="info-box green">
+    <div class="box-title">✅ Hubungan Dependency</div>
+    <code>server.js</code> → mengimpor dan menggunakan → <code>linearRegression.js</code>, <code>alertSystem.js</code>, <code>firebaseService.js</code>, <code>telegramService.js</code>.
+    Tidak ada dependency antar modul pendukung (loose coupling).
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════════ -->
+<!-- 3. DIAGRAM 2: SEQUENCE DIAGRAM                                     -->
+<!-- ════════════════════════════════════════════════════════════════════ -->
+<h2>3. Diagram 2: Sequence Diagram — Alur Pemrosesan Data</h2>
+
+<p>
+    Diagram sekuens ini memvisualisasikan <strong>alur eksekusi fungsi utama</strong>
+    <code>processEarlyWarning()</code> yang dijalankan secara periodik oleh <em>cron scheduler</em>.
+    Fungsi ini merupakan jantung dari sistem EWS — mengkoordinasikan seluruh pipeline dari
+    pengambilan data hingga penyiaran notifikasi.
+</p>
+
+<h3>3.1 Participant (Aktor dalam Sequence)</h3>
+
+<table>
+    <tr><th>Participant</th><th>Representasi</th><th>Peran</th></tr>
+    <tr><td>Scheduler</td><td><code>node-cron</code></td><td>Pemicu otomatis. Menjalankan analisis setiap 1 menit (produksi) atau 5 detik (demo).</td></tr>
+    <tr><td>Server</td><td><code>server.js</code></td><td>Orchestrator. Menerima trigger dan mengoordinasikan seluruh proses.</td></tr>
+    <tr><td>Firebase</td><td><code>firebaseService.js</code></td><td>Penyedia data. Mengambil dan menyimpan data dari/ke Firebase.</td></tr>
+    <tr><td>LR</td><td><code>LinearRegression</code></td><td>Engine ML. Melatih model dan menghasilkan prediksi.</td></tr>
+    <tr><td>Alert</td><td><code>alertSystem.js</code></td><td>Pengklasifikasi. Menentukan level bahaya dan format notifikasi.</td></tr>
+    <tr><td>Telegram</td><td><code>telegramService.js</code></td><td>Notifier. Mengirim pesan ke Telegram jika ada bahaya.</td></tr>
+    <tr><td>Dashboard</td><td>Web Dashboard</td><td>UI. Menerima update real-time via Socket.IO.</td></tr>
+</table>
+
+<h3>3.2 Langkah-langkah Eksekusi (Step-by-Step)</h3>
+
+<table>
+    <tr><th>Step</th><th>Dari → Ke</th><th>Aksi</th><th>Penjelasan</th></tr>
+    <tr>
+        <td><strong>1</strong></td>
+        <td>Cron → Server</td>
+        <td><code>processEarlyWarning()</code></td>
+        <td>Scheduler memicu fungsi utama. Di mode produksi, ini berjalan setiap 1 menit via <code>node-cron</code>. Di mode demo, setiap 5 detik via <code>setInterval</code>.</td>
+    </tr>
+    <tr>
+        <td><strong>2</strong></td>
+        <td>Server → Firebase</td>
+        <td><code>getHistoricalData(deviceId, 30)</code></td>
+        <td>Mengambil 30 data point terakhir dari <code>/devices/{id}/history</code>. Data diurutkan berdasarkan timestamp dan dinormalisasi dari millis() ESP32 ke Unix timestamp.</td>
+    </tr>
+    <tr>
+        <td><strong>3</strong></td>
+        <td>Firebase → Server</td>
+        <td>Return <code>history[]</code></td>
+        <td>Array berisi 30 objek data sensor (suhu, kelembaban, timestamp) yang sudah dinormalisasi.</td>
+    </tr>
+    <tr>
+        <td><strong>4</strong></td>
+        <td>Server → Firebase</td>
+        <td><code>getCurrentReading(deviceId)</code></td>
+        <td>Mengambil data sensor terkini dari <code>/devices/{id}/latest</code>.</td>
+    </tr>
+    <tr>
+        <td><strong>5</strong></td>
+        <td>Firebase → Server</td>
+        <td>Return <code>currentReading</code></td>
+        <td>Objek data sensor terakhir (suhu aktual, kelembaban, status Peltier, dll).</td>
+    </tr>
+    <tr>
+        <td><strong>6</strong></td>
+        <td>Server → LR</td>
+        <td><code>train(history)</code></td>
+        <td>Melatih model Linear Regression dengan data historis. Menghitung <strong>slope</strong> (laju kenaikan suhu per menit), <strong>intercept</strong>, dan <strong>R²</strong> (akurasi model).</td>
+    </tr>
+    <tr>
+        <td><strong>7</strong></td>
+        <td>LR → Server</td>
+        <td>Return <code>modelStats</code></td>
+        <td>Objek berisi: slope, intercept, rSquared, interpretation, dan calculationLogs.</td>
+    </tr>
+    <tr>
+        <td><strong>8</strong></td>
+        <td>Server → LR</td>
+        <td><code>predict(PREDICTION_MINUTES)</code></td>
+        <td>Memprediksi suhu N menit ke depan (default: 10 menit) berdasarkan model yang sudah dilatih. Menggunakan formula: <code>y = mx + b</code>.</td>
+    </tr>
+    <tr>
+        <td><strong>9</strong></td>
+        <td>LR → Server</td>
+        <td>Return <code>prediction</code></td>
+        <td>Objek berisi: predictedTemperature, confidence (R²×100), trend (naik/turun/stabil), ratePerMinute.</td>
+    </tr>
+    <tr>
+        <td><strong>10</strong></td>
+        <td>Server → LR</td>
+        <td><code>minutesToThreshold(50, currentTemp)</code></td>
+        <td>Menghitung estimasi berapa menit lagi suhu mencapai threshold kritis (50°C). Formula: <code>t = (threshold - current) / slope</code>.</td>
+    </tr>
+    <tr>
+        <td><strong>11</strong></td>
+        <td>LR → Server</td>
+        <td>Return <code>minutesToDanger</code></td>
+        <td>Angka menit (atau <code>null</code> jika suhu sedang turun / stabil).</td>
+    </tr>
+    <tr>
+        <td><strong>12</strong></td>
+        <td>Server → Alert</td>
+        <td><code>classifyDanger(current, prediction, modelStats)</code></td>
+        <td>Mengklasifikasikan level bahaya berdasarkan 3 faktor: suhu aktual, prediksi suhu, dan kelembaban. Menghasilkan level tertinggi dari ketiga evaluasi.</td>
+    </tr>
+    <tr>
+        <td><strong>13</strong></td>
+        <td>Alert → Server</td>
+        <td>Return <code>dangerInfo</code></td>
+        <td>Objek berisi: level (normal/warning/danger/critical), tempLevel, humidityRisk, predictionRisk, dan array factors.</td>
+    </tr>
+    <tr>
+        <td><strong>14</strong></td>
+        <td>Server → Alert</td>
+        <td><code>generateAlert(dangerInfo, ...)</code></td>
+        <td>Membuat objek alert terformat dengan judul, pesan, detail, dan tindakan yang diperlukan. Return <code>null</code> jika level = normal.</td>
+    </tr>
+    <tr>
+        <td><strong>15</strong></td>
+        <td>Alert → Server</td>
+        <td>Return <code>alertObject</code></td>
+        <td>Objek alert lengkap (atau <code>null</code>). Berisi: level, title, message, action, sensorData, prediction, timestamp.</td>
+    </tr>
+    <tr style="background: #fef5e7;">
+        <td colspan="4"><strong>⤷ Kondisional:</strong> Jika <code>alertObject !== null</code> (terdeteksi bahaya):</td>
+    </tr>
+    <tr>
+        <td><strong>16a</strong></td>
+        <td>Server → Firebase</td>
+        <td><code>saveAlert(deviceId, alertObject)</code></td>
+        <td>Menyimpan alert ke Firebase di path <code>/devices/{id}/alerts</code> untuk logging.</td>
+    </tr>
+    <tr>
+        <td><strong>16b</strong></td>
+        <td>Server → Telegram</td>
+        <td><code>notify(alertObject, ...)</code></td>
+        <td>Mengirim notifikasi ke Telegram. Dilengkapi rate limiting agar tidak spam (warning: 30 menit, danger: 15 menit, critical: 5 menit).</td>
+    </tr>
+    <tr style="background: #eafaf1;">
+        <td colspan="4"><strong>⤷ Jika <code>alertObject === null</code> (status normal):</strong> Memanggil <code>telegram.onStatusNormal()</code> untuk mereset recovery cooldown.</td>
+    </tr>
+    <tr>
+        <td><strong>17</strong></td>
+        <td>Server → Dashboard</td>
+        <td><code>io.emit('sensor-update', latestState)</code></td>
+        <td>Menyiarkan seluruh state terkini (sensor, model, prediksi, bahaya, chart) ke semua dashboard yang terhubung via Socket.IO.</td>
+    </tr>
+</table>
+
+<div class="info-box blue">
+    <div class="box-title">📌 Catatan Penting</div>
+    <p>Seluruh proses dari Step 1 hingga Step 17 berjalan dalam satu siklus eksekusi <code>processEarlyWarning()</code>. Di mode produksi, siklus ini berulang setiap <strong>1 menit</strong>. Selain trigger periodik, siklus juga dipicu secara real-time oleh Firebase listener (<code>subscribeToSensor</code>) setiap kali ESP32 mengirim data baru.</p>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════════ -->
+<!-- 4. DIAGRAM 3: CLASS & MODULE DIAGRAM                               -->
+<!-- ════════════════════════════════════════════════════════════════════ -->
+<h2>4. Diagram 3: Class &amp; Module Diagram</h2>
+
+<p>
+    Meskipun sistem ini ditulis dalam JavaScript/Node.js (bukan bahasa OOP murni), diagram ini
+    memetakan <strong>struktur modul</strong> sebagai Class Diagram. Hal ini berguna untuk melihat
+    <em>property</em> dan <em>method</em> apa saja yang diekspos oleh setiap komponen.
+</p>
+
+<h3>4.1 Class: LinearRegression</h3>
+
+<div class="info-box blue">
+    <div class="box-title">📄 File: linearRegression.js</div>
+    <p>Satu-satunya komponen yang menggunakan paradigma <strong>Object-Oriented</strong> (class ES6). Diinstansiasi sebagai objek <code>model</code> di <code>server.js</code>.</p>
+</div>
+
+<h4>Properties (Atribut)</h4>
+<table>
+    <tr><th>Akses</th><th>Nama</th><th>Tipe</th><th>Penjelasan</th></tr>
+    <tr><td>Public</td><td><code>slope</code></td><td>Number</td><td>Koefisien kemiringan garis regresi (<em>m</em>). Menunjukkan laju kenaikan/penurunan suhu per menit. Nilai positif = suhu naik.</td></tr>
+    <tr><td>Public</td><td><code>intercept</code></td><td>Number</td><td>Titik potong sumbu Y (<em>b</em>). Representasi suhu awal saat t=0.</td></tr>
+    <tr><td>Public</td><td><code>rSquared</code></td><td>Number</td><td>Koefisien determinasi (R²). Nilai 0–1 yang menunjukkan seberapa akurat model mewakili data. Semakin mendekati 1, semakin akurat.</td></tr>
+    <tr><td>Public</td><td><code>dataPoints</code></td><td>Array</td><td>Array data historis yang digunakan untuk training terakhir.</td></tr>
+    <tr><td>Public</td><td><code>isTrained</code></td><td>Boolean</td><td>Flag yang menunjukkan apakah model sudah dilatih dan siap untuk prediksi.</td></tr>
+    <tr><td>Public</td><td><code>calculationLogs</code></td><td>Object</td><td>Log detail perhitungan (sumX, sumY, sumXY, sumX2, dll) untuk transparansi dan debugging.</td></tr>
+</table>
+
+<h4>Methods (Fungsi)</h4>
+<table>
+    <tr><th>Akses</th><th>Method</th><th>Return</th><th>Penjelasan</th></tr>
+    <tr><td>Public</td><td><code>train(dataPoints)</code></td><td>Object</td><td>Melatih model dengan data historis sensor. Menghitung slope &amp; intercept menggunakan formula Least Squares: <code>m = (nΣxy - ΣxΣy) / (nΣx² - (Σx)²)</code>. Minimal memerlukan 3 data point.</td></tr>
+    <tr><td>Public</td><td><code>predict(minutesAhead)</code></td><td>Object</td><td>Memprediksi suhu N menit ke depan menggunakan formula: <code>y = mx + b</code>. Mengembalikan predictedTemperature, confidence, trend, dan ratePerMinute.</td></tr>
+    <tr><td>Public</td><td><code>minutesToThreshold(thresholdTemp, currentTemp)</code></td><td>Number|null</td><td>Menghitung estimasi waktu (menit) hingga suhu mencapai threshold tertentu. Formula: <code>t = (threshold - current) / slope</code>. Return null jika slope ≤ 0 (suhu tidak naik).</td></tr>
+    <tr><td>Public</td><td><code>getRegressionLine(numPoints)</code></td><td>Array</td><td>Menghasilkan titik-titik untuk menggambar garis regresi pada chart, termasuk 5 titik prediksi ke depan.</td></tr>
+    <tr><td>Private</td><td><code>_calculateRSquared(points)</code></td><td>Object</td><td>Menghitung R² (Coefficient of Determination). R² = 1 - (SSres / SStot). Digunakan internal oleh <code>train()</code>.</td></tr>
+    <tr><td>Private</td><td><code>_interpretSlope()</code></td><td>String</td><td>Menginterpretasikan slope menjadi teks deskriptif (contoh: "Suhu naik cepat (~12.0°C/jam)").</td></tr>
+</table>
+
+<h3>4.2 Module: firebaseService</h3>
+
+<div class="info-box blue">
+    <div class="box-title">📄 File: firebaseService.js</div>
+    <p>Modul fungsional yang mengabstraksi semua operasi Firebase Realtime Database. Diekspor sebagai kumpulan fungsi (bukan class).</p>
+</div>
+
+<table>
+    <tr><th>Fungsi</th><th>Parameter</th><th>Return</th><th>Penjelasan</th></tr>
+    <tr><td><code>initFirebase()</code></td><td>—</td><td>void</td><td>Inisialisasi Firebase Admin SDK menggunakan service account dari environment variables.</td></tr>
+    <tr><td><code>getCurrentReading(deviceId)</code></td><td>deviceId: string</td><td>Object</td><td>Membaca data sensor terkini dari <code>/devices/{id}/latest</code>.</td></tr>
+    <tr><td><code>getHistoricalData(deviceId, limitPoints)</code></td><td>deviceId: string, limitPoints: number</td><td>Array</td><td>Mengambil N data historis terakhir dari <code>/devices/{id}/history</code>, dengan normalisasi timestamp.</td></tr>
+    <tr><td><code>subscribeToSensor(deviceId, callback)</code></td><td>deviceId: string, callback: Function</td><td>Function (unsubscribe)</td><td>Mendengarkan perubahan real-time pada data sensor. Return fungsi unsubscribe.</td></tr>
+    <tr><td><code>getControlState(deviceId)</code></td><td>deviceId: string</td><td>Object</td><td>Membaca status kontrol (target_temperature, auto_mode) dari <code>/control/{id}</code>.</td></tr>
+    <tr><td><code>setControl(deviceId, controlData)</code></td><td>deviceId: string, controlData: Object</td><td>Object</td><td>Menulis setpoint kontrol baru ke Firebase agar ESP32 dapat membacanya.</td></tr>
+    <tr><td><code>savePrediction(deviceId, predictionData)</code></td><td>deviceId: string, predictionData: Object</td><td>void</td><td>Menyimpan hasil prediksi ke <code>/devices/{id}/predictions</code> (logging).</td></tr>
+    <tr><td><code>saveAlert(deviceId, alertData)</code></td><td>deviceId: string, alertData: Object</td><td>void</td><td>Menyimpan alert ke <code>/devices/{id}/alerts</code>.</td></tr>
+    <tr><td><code>generateMockData(baseTemp, trend)</code></td><td>baseTemp: number, trend: string</td><td>Object</td><td>Menghasilkan data sensor simulasi untuk mode demo (rising/stable/cooling).</td></tr>
+</table>
+
+<h3>4.3 Module: alertSystem</h3>
+
+<div class="info-box blue">
+    <div class="box-title">📄 File: alertSystem.js</div>
+    <p>Modul yang bertugas mengklasifikasikan level bahaya dan menghasilkan objek alert.</p>
+</div>
+
+<table>
+    <tr><th>Ekspor</th><th>Tipe</th><th>Penjelasan</th></tr>
+    <tr><td><code>THRESHOLDS</code></td><td>Object</td><td>Konstanta threshold untuk suhu (normal &lt;30°C, warning 30–40°C, danger 40–50°C, critical ≥50°C), kelembaban (tooLow &lt;10%, low &lt;20%), dan slope (rapid &gt;0.5°C/min, fast &gt;0.2°C/min).</td></tr>
+    <tr><td><code>classifyDanger(sensorData, prediction, modelStats)</code></td><td>Function</td><td>Mengevaluasi 3 faktor (suhu aktual, prediksi, kelembaban) dan mengembalikan level bahaya tertinggi beserta faktor-faktornya.</td></tr>
+    <tr><td><code>generateAlert(dangerInfo, sensorData, prediction, minutesToDanger)</code></td><td>Function</td><td>Menghasilkan objek alert terformat dengan title, message, detail, action, timestamp, dan sensorData. Return <code>null</code> jika level normal.</td></tr>
+    <tr><td><code>buildFactorList(...)</code> <em>(private)</em></td><td>Function</td><td>Membangun array string faktor-faktor bahaya untuk ditampilkan dalam notifikasi.</td></tr>
+</table>
+
+<h3>4.4 Module: telegramService</h3>
+
+<div class="info-box blue">
+    <div class="box-title">📄 File: telegramService.js</div>
+    <p>Singleton class yang mengelola pengiriman notifikasi ke Telegram dengan fitur rate limiting per level.</p>
+</div>
+
+<table>
+    <tr><th>Method</th><th>Penjelasan</th></tr>
+    <tr><td><code>notify(alert, prediction, modelStats, minutesToDanger)</code></td><td>Entry point utama. Mengecek rate limit, membangun pesan MarkdownV2, dan mengirim ke semua Chat ID yang dikonfigurasi. Rate limit: Warning=30 menit, Danger=15 menit, Critical=5 menit.</td></tr>
+    <tr><td><code>onStatusNormal()</code></td><td>Dipanggil saat status kembali normal. Mencatat waktu recovery untuk mencegah spam saat suhu berfluktuasi naik-turun.</td></tr>
+    <tr><td><code>getStatus()</code></td><td>Mengembalikan status rate limit Telegram saat ini (untuk API endpoint <code>/api/telegram-status</code>).</td></tr>
+</table>
+
+<h3>4.5 Relasi Antar Modul</h3>
+
+<table>
+    <tr><th>Relasi</th><th>Tipe</th><th>Penjelasan</th></tr>
+    <tr><td><code>server.js</code> → <code>LinearRegression</code></td><td><strong>Instantiates</strong></td><td>Server membuat instance <code>new LinearRegression()</code> sebagai variabel global <code>model</code>.</td></tr>
+    <tr><td><code>server.js</code> → <code>firebaseService</code></td><td><strong>Imports &amp; Uses</strong></td><td>Server mengimpor modul dan memanggil fungsi-fungsinya untuk akses database.</td></tr>
+    <tr><td><code>server.js</code> → <code>alertSystem</code></td><td><strong>Imports &amp; Uses</strong></td><td>Server mengimpor <code>classifyDanger</code>, <code>generateAlert</code>, dan <code>THRESHOLDS</code>.</td></tr>
+    <tr><td><code>server.js</code> → <code>telegramService</code></td><td><strong>Imports &amp; Uses</strong></td><td>Server mengimpor singleton dan memanggil <code>notify()</code>, <code>onStatusNormal()</code>, <code>getStatus()</code>.</td></tr>
+</table>
+
+<!-- ════════════════════════════════════════════════════════════════════ -->
+<!-- 5. DIAGRAM 4: FLOWCHART DANGER CLASSIFICATION                      -->
+<!-- ════════════════════════════════════════════════════════════════════ -->
+<h2>5. Diagram 4: Flowchart — Logika Klasifikasi Bahaya</h2>
+
+<p>
+    Flowchart ini menggambarkan secara spesifik bagaimana fungsi <code>classifyDanger()</code> di
+    <code>alertSystem.js</code> menentukan <strong>level bahaya akhir</strong> berdasarkan penggabungan
+    tiga faktor evaluasi: suhu saat ini, prediksi suhu, dan kelembaban.
+</p>
+
+<h3>5.1 Tahap 1: Evaluasi Suhu Saat Ini</h3>
+
+<p>Langkah pertama adalah mengevaluasi suhu aktual yang dibaca dari sensor DHT22:</p>
+
+<table>
+    <tr><th>Kondisi</th><th>Level</th><th>Keterangan</th></tr>
+    <tr><td>Suhu ≥ 50°C</td><td><span class="badge critical">CRITICAL</span></td><td>Suhu ekstrem. Risiko kebakaran sangat tinggi. Komponen bisa rusak permanen.</td></tr>
+    <tr><td>Suhu ≥ 40°C</td><td><span class="badge danger">DANGER</span></td><td>Overheat. Panel surya beroperasi di luar batas aman. Penurunan efisiensi drastis.</td></tr>
+    <tr><td>Suhu ≥ 30°C</td><td><span class="badge warning">WARNING</span></td><td>Mulai panas. Suhu melewati batas nyaman. Perlu pemantauan lebih ketat.</td></tr>
+    <tr><td>Suhu &lt; 30°C</td><td><span class="badge normal">NORMAL</span></td><td>Suhu aman. Panel beroperasi dalam batas normal (suhu ruang / pendinginan aktif).</td></tr>
+</table>
+
+<h3>5.2 Tahap 2: Evaluasi Prediksi Suhu</h3>
+
+<p>Langkah kedua menggunakan hasil prediksi dari model Linear Regression. Ini memberikan peringatan proaktif — sebelum suhu benar-benar mencapai level berbahaya:</p>
+
+<table>
+    <tr><th>Kondisi</th><th>Risk Level</th><th>Keterangan</th></tr>
+    <tr><td>Prediksi ≥ 50°C</td><td><span class="badge critical">CRITICAL</span></td><td>Model memprediksi suhu akan mencapai zona kritis dalam waktu dekat.</td></tr>
+    <tr><td>Prediksi ≥ 40°C</td><td><span class="badge danger">DANGER</span></td><td>Model memprediksi suhu akan memasuki zona bahaya.</td></tr>
+    <tr><td>Prediksi ≥ 30°C</td><td><span class="badge warning">WARNING</span></td><td>Model memprediksi suhu akan meningkat ke zona waspada.</td></tr>
+    <tr><td>Prediksi &lt; 30°C</td><td><span class="badge normal">NONE</span></td><td>Tidak ada risiko dari prediksi. Suhu diprediksi tetap aman.</td></tr>
+</table>
+
+<div class="info-box orange">
+    <div class="box-title">⚠️ Mengapa Evaluasi Prediksi Penting?</div>
+    <p>Tanpa prediksi, sistem hanya bisa bereaksi <em>setelah</em> suhu sudah berbahaya. Dengan Linear Regression, sistem bisa memberikan peringatan <strong>sebelum</strong> suhu mencapai batas kritis — memberikan waktu bagi operator untuk mengambil tindakan pencegahan.</p>
+</div>
+
+<h3>5.3 Tahap 3: Evaluasi Kelembaban</h3>
+
+<p>Kelembaban rendah meningkatkan risiko kebakaran karena kondisi kering mempercepat penyebaran api:</p>
+
+<table>
+    <tr><th>Kondisi</th><th>Risk Level</th><th>Keterangan</th></tr>
+    <tr><td>Kelembaban &lt; 10%</td><td><span class="badge critical">CRITICAL</span></td><td>Sangat kering. Risiko kebakaran meningkat drastis. Bahan mudah terbakar.</td></tr>
+    <tr><td>Kelembaban &lt; 20%</td><td><span class="badge warning">WARNING</span></td><td>Kering. Kondisi perlu diwaspadai, terutama jika dikombinasikan dengan suhu tinggi.</td></tr>
+    <tr><td>Kelembaban ≥ 20%</td><td><span class="badge normal">NORMAL</span></td><td>Kelembaban cukup. Tidak ada risiko tambahan dari faktor kelembaban.</td></tr>
+</table>
+
+<h3>5.4 Tahap 4: Penentuan Level Akhir</h3>
+
+<p>
+    Setelah ketiga evaluasi selesai, sistem menentukan <strong>level bahaya akhir</strong> dengan
+    mengambil <strong>level tertinggi</strong> dari ketiga faktor. Urutan prioritas:
+</p>
+
+<div class="flow-container">
+    <div class="flow-box green-box"><span class="badge normal">NORMAL</span><br>Level 0</div>
+    <div class="flow-arrow">&lt;</div>
+    <div class="flow-box" style="background:#fef5e7; border-color:#f39c12;"><span class="badge warning">WARNING</span><br>Level 1</div>
+    <div class="flow-arrow">&lt;</div>
+    <div class="flow-box" style="background:#fdedec; border-color:#e74c3c;"><span class="badge danger">DANGER</span><br>Level 2</div>
+    <div class="flow-arrow">&lt;</div>
+    <div class="flow-box" style="background:#f4ecf7; border-color:#8e44ad;"><span class="badge critical">CRITICAL</span><br>Level 3</div>
+</div>
+
+<h4>Contoh Skenario:</h4>
+
+<table>
+    <tr><th>Suhu Aktual</th><th>Prediksi</th><th>Kelembaban</th><th>tempLevel</th><th>predictionRisk</th><th>humidityRisk</th><th>Level Akhir</th></tr>
+    <tr><td>25°C</td><td>28°C</td><td>60%</td><td>normal</td><td>none</td><td>normal</td><td><span class="badge normal">NORMAL</span></td></tr>
+    <tr><td>32°C</td><td>38°C</td><td>45%</td><td>warning</td><td>warning</td><td>normal</td><td><span class="badge warning">WARNING</span></td></tr>
+    <tr><td>28°C</td><td>45°C</td><td>55%</td><td>normal</td><td>danger</td><td>normal</td><td><span class="badge danger">DANGER</span></td></tr>
+    <tr><td>35°C</td><td>42°C</td><td>8%</td><td>warning</td><td>danger</td><td>critical</td><td><span class="badge critical">CRITICAL</span></td></tr>
+    <tr><td>52°C</td><td>58°C</td><td>15%</td><td>critical</td><td>critical</td><td>warning</td><td><span class="badge critical">CRITICAL</span></td></tr>
+</table>
+
+<div class="info-box red">
+    <div class="box-title">🚨 Catatan Penting</div>
+    <p>Perhatikan skenario ke-3: meskipun suhu aktual masih <strong>28°C (normal)</strong>, karena prediksi menunjukkan suhu akan mencapai <strong>45°C (danger)</strong>, sistem sudah memberikan peringatan <span class="badge danger">DANGER</span>. Ini adalah keunggulan utama pendekatan <em>Early Warning</em> berbasis Machine Learning.</p>
+</div>
+
+<h3>5.5 Tindakan Berdasarkan Level</h3>
+
+<table>
+    <tr><th>Level</th><th>Respons Sistem</th><th>Pesan ke Pengguna</th></tr>
+    <tr>
+        <td><span class="badge normal">NORMAL</span></td>
+        <td>Tidak ada notifikasi. Status ditampilkan di dashboard. Telegram recovery cooldown dimulai.</td>
+        <td>—</td>
+    </tr>
+    <tr>
+        <td><span class="badge warning">WARNING</span></td>
+        <td>Alert disimpan ke Firebase. Telegram dikirim (maks 1×/30 menit). Dashboard diperbarui.</td>
+        <td>"⚠️ Peringatan: Suhu Meningkat — Periksa ventilasi dan pastikan panel tidak terhalang."</td>
+    </tr>
+    <tr>
+        <td><span class="badge danger">DANGER</span></td>
+        <td>Alert disimpan. Telegram dikirim (maks 1×/15 menit). Dashboard diperbarui dengan warna merah.</td>
+        <td>"🔴 BAHAYA: Suhu Tinggi Terdeteksi — SEGERA periksa panel surya!"</td>
+    </tr>
+    <tr>
+        <td><span class="badge critical">CRITICAL</span></td>
+        <td>Alert disimpan. Telegram dikirim (maks 1×/5 menit, frekuensi tertinggi). Dashboard menampilkan alarm.</td>
+        <td>"🚨 KRITIS: RISIKO KEBAKARAN TINGGI — MATIKAN SISTEM SEGERA!"</td>
+    </tr>
+</table>
+
+<!-- ════════════════════════════════════════════════════════════════════ -->
+<!-- 6. KESESUAIAN IMPLEMENTASI                                         -->
+<!-- ════════════════════════════════════════════════════════════════════ -->
+<h2>6. Kesesuaian Implementasi dengan Rancangan UML</h2>
+
+<p>
+    Berdasarkan analisis menyeluruh terhadap source code sistem dan rancangan UML, berikut adalah
+    hasil verifikasi kesesuaian:
+</p>
+
+<table>
+    <tr><th>Diagram UML</th><th>Status</th><th>Catatan</th></tr>
+    <tr>
+        <td>1. System Architecture</td>
+        <td style="color: green; font-weight: bold;">✅ SESUAI</td>
+        <td>Seluruh komponen (ESP32, Firebase, Server, Dashboard, Telegram) dan koneksi antar komponen cocok. 5 modul backend sesuai.</td>
+    </tr>
+    <tr>
+        <td>2. Sequence Diagram</td>
+        <td style="color: green; font-weight: bold;">✅ SESUAI</td>
+        <td>Seluruh 17 langkah dalam <code>processEarlyWarning()</code> diimplementasikan sesuai urutan yang digambarkan dalam diagram.</td>
+    </tr>
+    <tr>
+        <td>3. Class &amp; Module Diagram</td>
+        <td style="color: green; font-weight: bold;">✅ SESUAI</td>
+        <td>Semua class, property, method, dan relasi antar modul cocok. Terdapat 1 fungsi tambahan minor (<code>getDB()</code>) yang tidak ada di UML.</td>
+    </tr>
+    <tr>
+        <td>4. Flowchart Danger Classification</td>
+        <td style="color: green; font-weight: bold;">✅ SESUAI</td>
+        <td>Logika klasifikasi identik. 2 perbedaan penamaan internal yang tidak berpengaruh pada fungsionalitas.</td>
+    </tr>
+</table>
+
+<div class="info-box green">
+    <div class="box-title">✅ Kesimpulan</div>
+    <p><strong>Implementasi source code sistem telah sesuai dengan rancangan UML Diagrams.</strong> Perbedaan yang ditemukan hanya bersifat penamaan internal (<code>"none"</code> vs <code>"normal"</code> untuk default predictionRisk, dan <code>"high"</code> vs <code>"warning"</code> untuk humidityRisk) yang tidak mengubah perilaku sistem karena sudah di-mapping dengan benar sebelum penentuan level akhir.</p>
+</div>
+
+<footer>
+    <p>Dokumen ini di-generate berdasarkan analisis source code aktual &amp; UML diagrams.<br>
+    ESP32 Peltier Cooling Early Warning System &copy; 2026</p>
+</footer>
+
+</body>
+</html>
